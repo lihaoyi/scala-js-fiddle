@@ -116,7 +116,7 @@ class Page(val id: String, var path: String) extends com.framework.Page{
               """))
               )
             )
-          }
+          }.diff
 
         )
       )

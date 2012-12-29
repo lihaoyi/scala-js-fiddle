@@ -2,7 +2,20 @@ var ajax = {
     cometListeners: {
         partialUpdate: function(jsArray){
             $("."+jsArray["fragId"]).first().before(jsArray["contents"]).end().remove()
+        },
+        partialDiff: function(jsArray){
+            var current = $("."+jsArray["fragId"])
 
+            var currentText = ""
+            for(var i = 0; i < current.length; i++){
+
+                currentText = currentText + current[i].outerHTML
+            }
+
+            var dmp = new diff_match_patch()
+            var x = dmp.patch_apply(dmp.patch_fromText(jsArray['diffs']), currentText)[0]
+            jsArray['contents'] = x
+            ajax.cometListeners.partialUpdate(jsArray)
         },
         doNothing: function(jsArray){}
     },

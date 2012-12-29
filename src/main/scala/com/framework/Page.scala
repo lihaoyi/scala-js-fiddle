@@ -1,6 +1,6 @@
 package com
 package framework
-
+import scala.collection.JavaConverters._
 import akka.actor.{ReceiveTimeout, ActorRef, Actor}
 import rx.{Obs, Sig}
 
@@ -35,10 +35,11 @@ trait Page extends Actor{
   var lastMsgId = ""
 
   def pageHeader = Seq(
+    script.src("/javascript/diff_match_patch.js")(""),
     script.src("/javascript/stateful.js")(""),
     script(s"ajax.runComet('/ajax/down', '$id')")
-
   )
+
   case class CallBack(uuid: String, jsString: String, callback: JsValue => Unit){
     override def toString() = jsString
   }
@@ -49,27 +50,62 @@ trait Page extends Actor{
     Raw(CallBack(uuid, finalText, callback))
   }
 
-  implicit def extractSig(s: Sig[HtmlTag]): STag = {
-    val uuid = scala.util.Random.alphanumeric.take(6).mkString
-    def withCls: STag = s.now().cls(""+uuid).attr("cow" -> updater)
-    lazy val updater = Obs(s){
-      println("SigUpdate")
-      val msgId = scala.util.Random.alphanumeric.take(6).mkString
-      val msgBody =
-        JsObject(
-          "fragId" -> JsString(uuid),
-          "contents" -> JsString(withCls.toXML.toString)
+  implicit class TagSig(s: Sig[HtmlTag]){
+    def replace = {
+
+      val uuid = scala.util.Random.alphanumeric.take(6).mkString
+      def withCls: STag = s.now().cls(""+uuid).attr("cow" -> updater)
+      lazy val updater = Obs(s){
+        println("SigUpdate")
+        val msgId = scala.util.Random.alphanumeric.take(6).mkString
+        val msgBody =
+          JsObject(
+            "fragId" -> JsString(uuid),
+            "contents" -> JsString(withCls.toXML.toString)
+          )
+
+        buffer = buffer :+ CometMessage(
+          msgId,
+          "partialUpdate",
+          msgBody
+        )
+        self ! Flush()
+      }
+      withCls
+    }
+
+    def diff = {
+      val uuid = scala.util.Random.alphanumeric.take(6).mkString
+      var lastValue = ""
+      def withCls: STag = s.now().cls(""+uuid).attr("cow" -> updater)
+      lazy val updater = Obs(s){
+        println("SigDiff")
+        val newValue = withCls.toXML.toString
+        val dmp = new diff_match_patch()
+        val diffs = dmp.patch_toText(dmp.patch_make(lastValue, newValue))
+        val msgId = scala.util.Random.alphanumeric.take(6).mkString
+
+        val msgBody =
+          JsObject(
+            "fragId" -> JsString(uuid),
+            "diffs" -> JsString(diffs)
+          )
+
+        buffer = buffer :+ CometMessage(
+          msgId,
+          "partialDiff",
+          msgBody
         )
 
-      buffer = buffer :+ CometMessage(
-        msgId,
-        "partialUpdate",
-        msgBody
-      )
-      self ! Flush()
+        lastValue = withCls.toXML().toString
+        self ! Flush()
+      }
+      lastValue = withCls.toXML().toString
+      withCls
     }
-    withCls
   }
+
+
 
   def receive = {
     case Page.OpenDownlink(connection, lastMsgId) =>
