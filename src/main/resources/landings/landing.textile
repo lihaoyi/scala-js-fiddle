@@ -1,0 +1,16 @@
+h1. markme.com
+
+*markme.com* is a playground for testing out various markup languages. Just edit the source on the _left_ and see the rendered output on the _right_.
+
+Currently it supports:
+
+- *Markdown* at "/markdown":/markdown
+- *Textile* at "/textile":/textile
+- *MediaWiki* at "/mediawiki":/mediawiki
+- *HTML* at "/html":/html
+
+h2. Textile
+
+"Textile":http://en.wikipedia.org/wiki/Textile_%28markup_language%29 is a lightweight markup language that is used to format posts on Google+ and other places.
+
+*markme.com* uses "TextileJ":http://mvnrepository.com/artifact/net.java.dev.textile-j/textile-j/2.2.864 as its Textile parser
