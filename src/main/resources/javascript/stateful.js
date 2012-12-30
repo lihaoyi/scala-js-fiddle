@@ -8,7 +8,6 @@ var ajax = {
 
             var currentText = ""
             for(var i = 0; i < current.length; i++){
-
                 currentText = currentText + current[i].outerHTML
             }
 

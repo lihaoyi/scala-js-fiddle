@@ -1,6 +1,5 @@
 package com
 package framework
-import scala.collection.JavaConverters._
 import akka.actor.{ReceiveTimeout, ActorRef, Actor}
 import rx.{Obs, Sig}
 
@@ -19,6 +18,7 @@ object Page{
   case class OpenDownlink(connection: ActorRef, lastMsgId: String)
   case class Hello(server: ActorRef)
 }
+
 case class CometMessage(id: String,
                         listener: String,
                         msg: JsValue)
@@ -51,6 +51,7 @@ trait Page extends Actor{
   }
 
   implicit class TagSig(s: Sig[HtmlTag]){
+
     def replace = {
 
       val uuid = scala.util.Random.alphanumeric.take(6).mkString
