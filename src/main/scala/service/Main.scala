@@ -3,7 +3,7 @@ package service
 import akka.actor.{ActorSystem, Actor, Props}
 import akka.event.Logging
 import spray.can.Http
-import spray.http.{HttpResponse, HttpRequest}
+import spray.http._
 import scala.reflect.io.{NoAbstractFile, VirtualFile, AbstractFile, VirtualDirectory}
 import scala.tools.nsc.{Global, Settings}
 import java.net.URLClassLoader
@@ -13,8 +13,8 @@ import scala.tools.nsc.plugins.Plugin
 import scala.tools.nsc.io.VirtualFile
 import scala.concurrent.Await
 import java.io._
-import spray.http.HttpRequest
 import scala.Some
+import spray.http.HttpRequest
 import spray.http.HttpResponse
 
 object Main{
@@ -33,8 +33,8 @@ object Main{
 class MyActor extends Actor {
   def receive = {
     case Http.Connected(_, _) => sender ! Http.Register(self)
-    case HttpRequest(method, uri, headers, entity, protocol) =>
-
+    case HttpRequest(HttpMethods.GET, uri, headers, entity, protocol) =>
+    case HttpRequest(HttpMethods.POST, uri, headers, entity, protocol) =>
 
       lazy val settings = new Settings
 
@@ -43,14 +43,15 @@ class MyActor extends Actor {
       val vd = new VirtualDirectory("(memory)", None)
       settings.outputDirs.setSingleOutput(vd)
       settings.classpath.value = ClassPath.join(entries: _*)
-
-      val compiler = new Global(settings, new ConsoleReporter(settings)){
+      val stringWriter = new StringWriter()
+      val reporter = new ConsoleReporter(settings, scala.Console.in, new PrintWriter(stringWriter))
+      val compiler = new Global(settings, reporter){
         override lazy val plugins = List[Plugin](new scala.scalajs.compiler.ScalaJSPlugin(this))
       }
 
       val singleFile = new VirtualFile("(memory)")
 
-    val output = singleFile.output
+      val output = singleFile.output
       output.write(entity.data.toByteArray)
       output.close()
 
@@ -58,9 +59,22 @@ class MyActor extends Actor {
       run.compileFiles(List(singleFile))
 
       println("--------------------VD " + vd.iterator.size)
-      vd.iterator.foreach(println)
-
-      sender ! HttpResponse(entity="hello" + entity.data.asString)
+      vd.iterator.filter(_.name.endsWith(".js")).foreach(println)
+      if (vd.iterator.isEmpty){
+        sender ! HttpResponse(
+          status=StatusCodes.BadRequest,
+          entity=stringWriter.toString
+        )
+      }else{
+        sender ! HttpResponse(
+          entity=vd.iterator
+                   .filter(_.name.endsWith(".js"))
+                   .map(_.input)
+                   .map(io.Source.fromInputStream)
+                   .map(_.mkString)
+                   .mkString("\n")
+        )
+      }
     case x => println("UNKNOWN " + x)
   }
 }
