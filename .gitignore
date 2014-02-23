@@ -1,7 +1,7 @@
-/.idea/
-/.idea_modules/
-/project/project/
 target/
-lib_managed/
-src_managed/
-*.iml
+.cache
+.classpath
+.project
+.settings/
+.idea
+.idea_modules
