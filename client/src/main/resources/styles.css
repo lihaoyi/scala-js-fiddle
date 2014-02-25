@@ -1,0 +1,32 @@
+#editor {
+    margin: 0;
+    position: absolute;
+    top: 0;
+    bottom: 20%;
+    left: 0;
+    right: 50%;
+}
+#logspam{
+    margin: 0;
+    position: absolute;
+    top: 80%;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #222222;
+    color: white;
+    overflow: auto;
+}
+#sandbox {
+    margin: 0;
+    position: absolute;
+    top: 0;
+    bottom: 20%;
+    left: 50%;
+    right: 0;
+    background-color: black;
+}
+
+body {
+    overflow: hidden;
+}
