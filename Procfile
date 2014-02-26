@@ -1,1 +1,1 @@
-web: server/target/start fiddle.Main
+web: server/target/start

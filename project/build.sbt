@@ -14,3 +14,4 @@ lazy val root = project.in(file(".")).dependsOn(uri("https://github.com/lihaoyi/
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.10.0")
 
+addSbtPlugin("com.typesafe.sbt" % "sbt-proguard" % "0.2.2")
