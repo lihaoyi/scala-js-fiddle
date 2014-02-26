@@ -1,6 +1,6 @@
 import scala.scalajs.sbtplugin.ScalaJSPlugin._
 import ScalaJSKeys._
-import scala.js.workbench.Plugin._
+import com.typesafe.sbt.SbtStartScript
 
 scalaJSSettings
 
@@ -30,3 +30,11 @@ ScalaJSKeys.packageJS in Compile := {
 bootSnippet := "ScalaJS.modules.fiddle_Client().main();"
 
 updateBrowsers <<= updateBrowsers.triggeredBy(ScalaJSKeys.packageJS in Compile)
+
+(managedSources in packageExportedProductsJS in Compile) := {
+  (managedSources in packageExportedProductsJS in Compile).value.filter(f =>
+    new java.io.File(f.getAbsolutePath.dropRight(3) + ".sjsinfo").exists()
+  )
+}
+
+(SbtStartScript.stage in Compile) := (packageJS in Compile).value

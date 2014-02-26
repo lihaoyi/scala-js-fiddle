@@ -1,0 +1,1 @@
+web: server/target/start fiddle.Main
