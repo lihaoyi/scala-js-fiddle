@@ -16,6 +16,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.2.3",
   "io.spray" % "spray-can" % "1.2.0",
   "io.spray" % "spray-caching" % "1.2.0",
+  "io.spray" % "spray-httpx" % "1.2.0",
+  "io.spray" % "spray-routing" % "1.2.0",
   "org.scala-lang.modules.scalajs" %% "scalajs-compiler" % "0.4-SNAPSHOT",
   "org.scala-lang.modules.scalajs" %% "scalajs-library" % "0.4-SNAPSHOT",
   "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.2",
@@ -30,12 +32,9 @@ SbtStartScript.startScriptForClassesSettings
 
 Revolver.settings
 
-proguardSettings
+(products in Compile) := (products in Compile).value :+ generateClient.value
 
-ProguardKeys.options in Proguard ++= Seq(
-  "-dontnote",
-  "-dontwarn",
-  "-ignorewarnings",
-  ProguardOptions.keepMain("fiddle.Main")
-)
+buildSettingsX
+
+bootSnippet := "ScalaJS.modules.fiddle_Client().main();"
 

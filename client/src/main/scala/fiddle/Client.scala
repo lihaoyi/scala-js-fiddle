@@ -86,7 +86,7 @@ object Client{
     editor.renderer.setShowGutter(false)
 
     val callback = { () =>
-      println("callback2")
+      println("callback")
       val code = editor.getSession().getValue().asInstanceOf[String]
 
 
@@ -112,7 +112,7 @@ object Client{
             }
           }
         }
-        req.open("POST", "/")
+        req.open("POST", "/compile")
         req.send(code)
         logspam.textContent = "Compiling..."
       }

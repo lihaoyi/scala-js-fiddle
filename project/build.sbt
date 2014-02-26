@@ -13,5 +13,3 @@ addSbtPlugin("org.scala-lang.modules.scalajs" % "scalajs-sbt-plugin" % "0.4-SNAP
 lazy val root = project.in(file(".")).dependsOn(uri("https://github.com/lihaoyi/workbench.git"))
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.10.0")
-
-addSbtPlugin("com.typesafe.sbt" % "sbt-proguard" % "0.2.2")
