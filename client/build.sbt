@@ -21,10 +21,4 @@ libraryDependencies ++= Seq(
 unmanagedSources in (Compile, ScalaJSKeys.packageJS) +=
   baseDirectory.value / "js" / "startup.js"
 
-(managedSources in packageExportedProductsJS in Compile) := {
-  (managedSources in packageExportedProductsJS in Compile).value.filter(f =>
-    new java.io.File(f.getAbsolutePath.dropRight(3) + ".sjsinfo").exists()
-  )
-}
-
 (SbtStartScript.stage in Compile) := (packageJS in Compile).value

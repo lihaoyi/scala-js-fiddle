@@ -3,27 +3,35 @@ package fiddle
 import spray.http._
 import spray.http.HttpHeaders._
 import spray.http.ChunkedResponseStart
+import spray.httpx.encoding.Gzip
+import spray.routing.directives.CachingDirectives._
 import scala.Some
 import spray.http.HttpResponse
 import spray.routing.{RequestContext, SimpleRoutingApp}
 import akka.actor.ActorSystem
-
+import concurrent.duration._
 object Main extends SimpleRoutingApp {
   implicit val system = ActorSystem()
   def main(args: Array[String]): Unit = {
+    val simpleCache = routeCache(maxCapacity = 1000)
+
     startServer("localhost", port = 8080) {
-      get {
-        pathSingleSlash {
-          getFromResource("index.html")
+      cache(simpleCache) {
+        get {
+          encodeResponse(Gzip) {
+            pathSingleSlash {
+                getFromResource("index.html")
+            } ~
+            pathPrefix("js") {
+              getFromResourceDirectory("..")
+            } ~
+            getFromResourceDirectory("")
+          }
         } ~
-        pathPrefix("js") {
-          getFromResourceDirectory("..")
-        } ~
-        getFromResourceDirectory("")
-      } ~
-      post {
-        path("compile"){
-          compileStuff
+        post {
+          path("compile"){
+            compileStuff
+          }
         }
       }
     }
