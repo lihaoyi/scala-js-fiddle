@@ -20,7 +20,7 @@ libraryDependencies ++= Seq(
   "io.spray" % "spray-routing" % "1.2.0",
   "org.scala-lang.modules.scalajs" %% "scalajs-compiler" % "0.4-SNAPSHOT",
   "org.scala-lang.modules.scalajs" %% "scalajs-library" % "0.4-SNAPSHOT",
-  "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.2",
+  "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.3-SNAPSHOT",
   "org.scala-lang.modules.scalajs" %% "scalajs-jquery" % "0.1-SNAPSHOT",
   "com.scalatags" % "scalatags_2.10" % "0.2.3-JS",
   "com.scalarx" % "scalarx_2.10" % "0.2.2-JS"

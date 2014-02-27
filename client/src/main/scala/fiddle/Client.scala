@@ -26,7 +26,7 @@ object Page{
       |import org.scalajs.dom
       |
       |case class Pt(x: Double, y: Double)
-      |object Main{
+      |object ScalaJSExample{
       |  println("Hello!!")
       |  val sandbox = dom.document
       |    .getElementById("canvas")
@@ -105,7 +105,7 @@ object Client{
               val res = parts(1)
               clear()
               js.eval(res)
-              js.eval("ScalaJS.modules.Main().main()")
+              js.eval("ScalaJS.modules.ScalaJSExample().main()")
               cache(code) = (req.responseText, Some(res))
             }else{
               cache(code) = (req.responseText, None)
