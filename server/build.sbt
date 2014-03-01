@@ -10,6 +10,8 @@ resolvers += Resolver.url("scala-js-snapshots",
   url("http://repo.scala-js.org/repo/snapshots/"))(
     Resolver.ivyStylePatterns)
 
+resolvers += "Typesafe Repo" at "http://repo.typesafe.com/typesafe/releases/"
+
 libraryDependencies ++= Seq(
   "com.lihaoyi.utest" % "utest_2.10" % "0.1.1" % "test",
   "org.scala-lang" % "scala-compiler" % "2.10.3" % "provided",
@@ -23,7 +25,8 @@ libraryDependencies ++= Seq(
   "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.3-SNAPSHOT",
   "org.scala-lang.modules.scalajs" %% "scalajs-jquery" % "0.1-SNAPSHOT",
   "com.scalatags" % "scalatags_2.10" % "0.2.3-JS",
-  "com.scalarx" % "scalarx_2.10" % "0.2.2-JS"
+  "com.scalarx" % "scalarx_2.10" % "0.2.2-JS",
+  "com.typesafe.play" %% "play-json" % "2.2.1"
 )
 
 testFrameworks += new TestFramework("utest.runner.JvmFramework")

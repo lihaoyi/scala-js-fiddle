@@ -7,7 +7,6 @@ import scalatags.Tags2
 
 object Page{
   import scalatags.all._
-
   def body = Seq(
     pre(id:="editor")(starting),
     pre(id:="logspam")(
@@ -15,7 +14,7 @@ object Page{
         |- Enter your code on the left pane
         |- Shift-Enter to compile and execute your program
         |- Draw pictures on the right pane and see println()s in the browser console
-      """.stripMargin
+      |""".stripMargin
     ),
     div(id:="sandbox")(
       canvas(id:="canvas")
@@ -64,7 +63,6 @@ object Client{
   lazy val sandbox = js.Dynamic.global.sandbox.asInstanceOf[dom.HTMLDivElement]
   lazy val canvas = js.Dynamic.global.canvas.asInstanceOf[dom.HTMLCanvasElement]
   lazy val logspam = js.Dynamic.global.logspam.asInstanceOf[dom.HTMLPreElement]
-  lazy val cache = mutable.Map.empty[String, (String, Option[String])]
 
   def clear() = {
     canvas.height = sandbox.clientHeight
@@ -75,7 +73,10 @@ object Client{
     }
     sandbox.innerHTML = sandbox.innerHTML
   }
-
+  def log(s: Any): Unit = {
+    logspam.textContent += s + "\n"
+    logspam.scrollTop = logspam.scrollHeight - logspam.clientHeight
+  }
   def main(args: Array[String]): Unit = {
     dom.document.body.innerHTML = Page.body.mkString
     clear()
@@ -86,38 +87,35 @@ object Client{
     editor.renderer.setShowGutter(false)
 
     val callback = { () =>
-      println("callback")
       val code = editor.getSession().getValue().asInstanceOf[String]
-
 
       if (!requestInFlight){
         val req = new dom.XMLHttpRequest()
         requestInFlight = true
-
-        req.onreadystatechange = { (e: dom.Event) =>
-          logspam.textContent = req.responseText
-          logspam.scrollTop = logspam.scrollHeight - logspam.clientHeight
-
-          if (req.readyState.toInt == 4) {
-            requestInFlight = false
-            val parts = req.responseText.split("\n\n\n\n\n")
-            if (parts.length.toInt == 3){
-              val res = parts(1)
+        log("Compiling...")
+        req.onload = { (e: dom.Event) =>
+          requestInFlight = false
+          try{
+            val result = js.JSON.parse(req.responseText)
+            dom.console.log(result)
+            logspam.textContent += result.logspam
+            if(result.success.asInstanceOf[js.Boolean]){
               clear()
-              js.eval(res)
-              js.eval("ScalaJS.modules.ScalaJSExample().main()")
-              cache(code) = (req.responseText, Some(res))
+              js.eval(""+result.code)
+              log("Success")
             }else{
-              cache(code) = (req.responseText, None)
+              log("Failure")
             }
+
+          }catch{case e =>
+            log(req.responseText)
+            log("Failure")
           }
         }
         req.open("POST", "/compile")
         req.send(code)
-        logspam.textContent = "Compiling..."
       }
     }
-
 
     editor.commands.addCommand(lit(
       name = "saveFile",
@@ -128,6 +126,7 @@ object Client{
       ),
       exec = callback: js.Function0[_]
     ))
+    editor.getSession().setTabSize(2)
     callback()
   }
 }

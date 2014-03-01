@@ -10,9 +10,16 @@ import spray.http.HttpResponse
 import spray.routing.{RequestContext, SimpleRoutingApp}
 import akka.actor.ActorSystem
 import concurrent.duration._
+import spray.routing.directives.CacheKeyer
+import scala.collection.mutable
+import play.api.libs.json._
+
 object Main extends SimpleRoutingApp {
   implicit val system = ActorSystem()
   def main(args: Array[String]): Unit = {
+    implicit val Default: CacheKeyer = CacheKeyer {
+      case RequestContext(HttpRequest(_, uri, _, entity, _), _, _) => (uri, entity)
+    }
     val simpleCache = routeCache(maxCapacity = 1000)
 
     startServer("localhost", port = 8080) {
@@ -37,26 +44,33 @@ object Main extends SimpleRoutingApp {
     }
   }
   def compileStuff(ctx: RequestContext): Unit = {
-    def send(msg: String) = {
-      ctx.responder ! MessageChunk(msg)
+    val output = mutable.Buffer.empty[String]
+
+    val res = Compiler(
+      ctx.request.entity.data.toByteArray,
+      output.append(_)
+    )
+
+    val returned = res match {
+      case None =>
+        Json.obj(
+          "success" -> false,
+          "logspam" -> output.mkString
+        )
+      case Some(code) =>
+        Json.obj(
+          "success" -> true,
+          "logspam" -> output.mkString,
+          "code" -> (code + "ScalaJS.modules.ScalaJSExample().main__AT__V()")
+        )
     }
 
-    ctx.responder ! ChunkedResponseStart(HttpResponse(
-      entity="Compiling...\n" + ctx.request.entity.data.asString + "\n",
+    ctx.responder ! HttpResponse(
+      entity=returned.toString,
       headers=List(
         `Access-Control-Allow-Origin`(spray.http.AllOrigins)
       )
-    ))
-    val res = Compiler(
-      ctx.request.entity.data.toByteArray,
-      msg => send(msg)
     )
-    res match {
-      case None => ctx.responder ! ChunkedMessageEnd()
-      case Some(code) =>
-        send("\n\n\n\n\n" + code + "\n\n\n\n\nCompilation Complete")
-        ctx.responder ! ChunkedMessageEnd()
-    }
   }
 }
 
