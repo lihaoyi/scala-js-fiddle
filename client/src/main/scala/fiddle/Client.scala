@@ -12,7 +12,7 @@ object Page{
     pre(id:="logspam")(
       """
         |- Enter your code on the left pane
-        |- Shift-Enter to compile and execute your program
+        |- Command/Ctrl-Enter to compile and execute your program
         |- Draw pictures on the right pane and see println()s in the browser console
       |""".stripMargin
     ),
