@@ -57,14 +57,16 @@ object Page{
     """.stripMargin
 
 }
+
 object Client{
 
   var requestInFlight = false
-  lazy val sandbox = js.Dynamic.global.sandbox.asInstanceOf[dom.HTMLDivElement]
-  lazy val canvas = js.Dynamic.global.canvas.asInstanceOf[dom.HTMLCanvasElement]
-  lazy val logspam = js.Dynamic.global.logspam.asInstanceOf[dom.HTMLPreElement]
+  def sandbox = js.Dynamic.global.sandbox.asInstanceOf[dom.HTMLDivElement]
+  def canvas = js.Dynamic.global.canvas.asInstanceOf[dom.HTMLCanvasElement]
+  def logspam = js.Dynamic.global.logspam.asInstanceOf[dom.HTMLPreElement]
 
   def clear() = {
+    println(sandbox.clientHeight + " " + sandbox.clientWidth)
     canvas.height = sandbox.clientHeight
     canvas.width = sandbox.clientWidth
     for(i <- 0 until 1000){

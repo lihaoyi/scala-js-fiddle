@@ -10,6 +10,6 @@ resolvers += Resolver.url("scala-js-snapshots",
 
 addSbtPlugin("org.scala-lang.modules.scalajs" % "scalajs-sbt-plugin" % "0.3")
 
-lazy val root = project.in(file(".")).dependsOn(uri("https://github.com/lihaoyi/workbench.git"))
+addSbtPlugin("com.lihaoyi" % "workbench" % "0.1")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.10.0")

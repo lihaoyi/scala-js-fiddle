@@ -35,9 +35,3 @@ SbtStartScript.startScriptForClassesSettings
 
 Revolver.settings
 
-(products in Compile) := (products in Compile).value :+ generateClient.value
-
-buildSettingsX
-
-bootSnippet := "ScalaJS.modules.fiddle_Client().main();"
-

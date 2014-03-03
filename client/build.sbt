@@ -2,6 +2,8 @@ import scala.scalajs.sbtplugin.ScalaJSPlugin._
 import ScalaJSKeys._
 import com.typesafe.sbt.SbtStartScript
 
+import com.lihaoyi.workbench.Plugin._
+
 scalaJSSettings
 
 name := "Example"
@@ -22,3 +24,9 @@ unmanagedSources in (Compile, ScalaJSKeys.packageJS) +=
   baseDirectory.value / "js" / "startup.js"
 
 (SbtStartScript.stage in Compile) := (packageJS in Compile).value
+
+workbenchSettings
+
+bootSnippet := "ScalaJS.modules.fiddle_Client().main();"
+
+updateBrowsers <<= updateBrowsers.triggeredBy(packageJS in Compile)

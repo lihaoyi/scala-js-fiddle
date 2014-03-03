@@ -13,5 +13,4 @@ SbtStartScript.stage in Compile := Unit
 
 (crossTarget in (client, Compile, packageExternalDepsJS)) := (classDirectory in (server, Compile)).value
 
-(crossTarget in (server, Compile, generateClient)) := (classDirectory in (server, Compile)).value
-
+(crossTarget in (client, Compile)) := (classDirectory in (server, Compile)).value
