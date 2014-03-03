@@ -116,6 +116,7 @@ object SecurityManager extends java.lang.SecurityManager{
         // Needed to continue accepting incoming HTTP requests
       case p: RuntimePermission
         if p.getName == "setContextClassLoader"
+        || p.getName == "getClassLoader"
         || p.getName == "getenv.*"
         || p.getName == "accessDeclaredMembers" // needed to start htreads, for some reason
         || p.getName == "modifyThreadGroup" // needed for restarts during development to work
