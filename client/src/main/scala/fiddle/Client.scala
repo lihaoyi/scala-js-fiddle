@@ -203,7 +203,7 @@ object Client{
         result.id
     }
 
-    val fiddleUrl: String = dom.document.location.host + "/gist/" + resultId
+    val fiddleUrl = "http://" + dom.document.location.host + "/gist/" + resultId
     log("Saved as ", a(href:=fiddleUrl)(fiddleUrl))
     dom.history.pushState(null, null, "/gist/" + resultId)
     val gistUrl = "https://gist.github.com/" + resultId

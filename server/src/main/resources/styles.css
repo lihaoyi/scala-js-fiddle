@@ -34,3 +34,7 @@ body {
 a:link{
     color:#88ffff;
 }
+
+a:visited{
+    color:#ff88ff;
+}
