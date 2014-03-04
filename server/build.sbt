@@ -14,7 +14,7 @@ resolvers += "Typesafe Repo" at "http://repo.typesafe.com/typesafe/releases/"
 
 libraryDependencies ++= Seq(
   "com.lihaoyi.utest" % "utest_2.10" % "0.1.1" % "test",
-  "org.scala-lang" % "scala-compiler" % "2.10.3" % "provided",
+  "org.scala-lang" % "scala-compiler" % "2.10.3",
   "com.typesafe.akka" %% "akka-actor" % "2.2.3",
   "io.spray" % "spray-can" % "1.2.0",
   "io.spray" % "spray-caching" % "1.2.0",
@@ -26,8 +26,9 @@ libraryDependencies ++= Seq(
   "org.scala-lang.modules.scalajs" %% "scalajs-jquery" % "0.1-SNAPSHOT",
   "com.scalatags" % "scalatags_2.10" % "0.2.3-JS",
   "com.scalarx" % "scalarx_2.10" % "0.2.2-JS",
-  "com.typesafe.play" %% "play-json" % "2.2.1"
+  "io.spray" %%  "spray-json" % "1.2.5"
 )
+
 
 testFrameworks += new TestFramework("utest.runner.JvmFramework")
 

@@ -16,12 +16,15 @@ import java.util.PropertyPermission
 import java.lang.reflect.ReflectPermission
 import java.net.SocketPermission
 
+import spray.json._
+import DefaultJsonProtocol._
+
 object Main extends SimpleRoutingApp {
   implicit val system = ActorSystem()
 
   /**
    * Only set this once
-   */
+   */  
   lazy val setSecurityManager = System.setSecurityManager(SecurityManager)
 
   def main(args: Array[String]): Unit = {
@@ -55,7 +58,7 @@ object Main extends SimpleRoutingApp {
   def compileStuff(ctx: RequestContext): Unit = try{
 
     val output = mutable.Buffer.empty[String]
-//    setSecurityManager
+    setSecurityManager
 
     val res = Compiler(
       ctx.request.entity.data.toByteArray,
@@ -65,22 +68,21 @@ object Main extends SimpleRoutingApp {
     def clean(s: String) = s.replace("\"", "\\\"").replace("\n", "\\n")
     val returned = res match {
       case None =>
-        s"""{
-          "success": false,
-          "logspam": "${clean(output.mkString)}"
-        }"""
+        JsObject(
+          "success" -> false.toJson,
+          "logspam" -> output.mkString.toJson
+        )
 
       case Some(code) =>
-        s"""{
-          "success": true,
-          "logspam": "${clean(output.mkString)}",
-          "code": "${clean(code + "ScalaJS.modules.ScalaJSExample().main__AT__V()")}"
-        }"""
-
+        JsObject(
+          "success" -> true.toJson,
+          "logspam" -> output.mkString.toJson,
+          "code" -> (code + "ScalaJS.modules.ScalaJSExample().main__AT__V()").toJson
+        )
     }
 
     ctx.responder ! HttpResponse(
-      entity=returned,
+      entity=returned.toString,
       headers=List(
         `Access-Control-Allow-Origin`(spray.http.AllOrigins)
       )
@@ -119,11 +121,16 @@ object SecurityManager extends java.lang.SecurityManager{
         || p.getName == "getClassLoader"
         || p.getName == "getenv.*"
         || p.getName == "accessDeclaredMembers" // needed to start htreads, for some reason
-        || p.getName == "modifyThreadGroup" // needed for restarts during development to work
         || p.getName == "getenv.SOURCEPATH" =>
 
       case _ =>
         throw new AccessControlException(perm.toString)
     }
+  }
+  override def checkAccess(g: Thread) = {
+    if (g.getName != "system") super.checkAccess(g)
+  }
+  override def checkAccess(g: ThreadGroup) = {
+    if (g.getName != "SIGTERM handler") super.checkAccess(g)
   }
 }
