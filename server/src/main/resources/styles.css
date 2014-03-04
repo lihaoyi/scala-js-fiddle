@@ -30,3 +30,7 @@
 body {
     overflow: hidden;
 }
+
+a:link{
+    color:#88ffff;
+}

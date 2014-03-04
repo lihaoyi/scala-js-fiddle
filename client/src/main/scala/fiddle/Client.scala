@@ -3,19 +3,17 @@ import scala.scalajs.js
 import js.Dynamic.{global, literal => lit}
 import org.scalajs.dom
 import collection.mutable
-import scalatags.Tags2
+import scalatags.{Modifier, Tags2}
+import scala.concurrent.{Promise, Future}
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.async.Async.{async, await}
+import scalatags.all._
 
 object Page{
-  import scalatags.all._
+
   def body = Seq(
-    pre(id:="editor")(starting),
-    pre(id:="logspam")(
-      """
-        |- Enter your code on the left pane =)
-        |- Command/Ctrl-Enter to compile and execute your program
-        |- Draw pictures on the right pane and see println()s in the browser console
-      |""".stripMargin
-    ),
+    pre(id:="editor"),
+    pre(id:="logspam"),
     div(id:="sandbox")(
       canvas(id:="canvas")
     )
@@ -55,18 +53,52 @@ object Page{
       |  }
       |}
     """.stripMargin
-
 }
 
 object Client{
 
-  var requestInFlight = false
   def sandbox = js.Dynamic.global.sandbox.asInstanceOf[dom.HTMLDivElement]
   def canvas = js.Dynamic.global.canvas.asInstanceOf[dom.HTMLCanvasElement]
   def logspam = js.Dynamic.global.logspam.asInstanceOf[dom.HTMLPreElement]
 
+  lazy val editor: js.Dynamic = {
+    val editor = global.ace.edit("editor")
+    editor.setTheme("ace/theme/twilight")
+    editor.getSession().setMode("ace/mode/scala")
+    editor.renderer.setShowGutter(false)
+
+    editor.commands.addCommand(lit(
+      name = "compile",
+      bindKey = lit(
+        win = "Ctrl-Enter",
+        mac = "Command-Enter",
+        sender = "editor|cli"
+      ),
+      exec = (compile _): js.Function0[_]
+    ))
+    editor.commands.addCommand(lit(
+      name = "save",
+      bindKey = lit(
+        win = "Ctrl-S",
+        mac = "Command-S",
+        sender = "editor|cli"
+      ),
+      exec = (save _): js.Function0[_]
+    ))
+    editor.commands.addCommand(lit(
+      name = "complete",
+      bindKey = lit(
+        win = "Ctrl-`",
+        mac = "Command-`",
+        sender = "editor|cli"
+      ),
+      exec = (complete _): js.Function0[_]
+    ))
+    editor.getSession().setTabSize(2)
+    editor
+  }
+
   def clear() = {
-    println(sandbox.clientHeight + " " + sandbox.clientWidth)
     canvas.height = sandbox.clientHeight
     canvas.width = sandbox.clientWidth
     for(i <- 0 until 1000){
@@ -75,60 +107,106 @@ object Client{
     }
     sandbox.innerHTML = sandbox.innerHTML
   }
-  def log(s: Any): Unit = {
-    logspam.textContent += s + "\n"
+  val saved = mutable.Map.empty[String, Int]
+  var logged = div(
+    div("- Cmd/Ctrl-Enter to compile & execute"),
+    div("- Draw pictures on the right pane and see println()s in the browser console"),
+    div("- Cmd/Ctrl-S to save your code to a Github Gist")
+
+  )
+
+  def log(s: Modifier*): Unit = {
+    logged = div(s:_*).transform(logged)
+    logspam.innerHTML = logged.toString()
     logspam.scrollTop = logspam.scrollHeight - logspam.clientHeight
   }
+
   def main(args: Array[String]): Unit = {
     dom.document.body.innerHTML = Page.body.mkString
     clear()
+    if (dom.document.location.pathname == "/"){
+      editor.getSession().setValue(Page.starting)
+      compile()
+    } else async {
+      val gistId = dom.document.location.pathname.drop(6)
+      val gistUrl = "https://gist.github.com/" + gistId
 
-    val editor = global.ace.edit("editor")
-    editor.setTheme("ace/theme/twilight")
-    editor.getSession().setMode("ace/mode/scala")
-    editor.renderer.setShowGutter(false)
+      log("Loading code from gist ", a(href:=gistUrl)(gistUrl), "...")
 
-    val callback = { () =>
-      val code = editor.getSession().getValue().asInstanceOf[String]
+      val res = await(Ajax.get("https://api.github.com/gists/" + gistId))
+      val result = js.JSON.parse(res.responseText)
 
-      if (!requestInFlight){
-        val req = new dom.XMLHttpRequest()
-        requestInFlight = true
-        log("Compiling...")
-        req.onload = { (e: dom.Event) =>
-          requestInFlight = false
-          try{
-            val result = js.JSON.parse(req.responseText)
-            dom.console.log(result)
-            logspam.textContent += result.logspam
-            if(result.success.asInstanceOf[js.Boolean]){
-              clear()
-              js.eval(""+result.code)
-              log("Success")
-            }else{
-              log("Failure")
-            }
+      val content = result.files
+                          .selectDynamic("Main.scala")
+                          .content
+                          .toString
+      editor.getSession().setValue(content)
+      saved(content) = gistId.toInt
+      compile()
+    }.onFailure{ case _ =>
+      log("Loading failed. Falling back to default code.")
+      editor.getSession().setValue(Page.starting)
+      compile()
+    }
+  }
+  def compile(): Unit = async {
+    val code = editor.getSession().getValue().asInstanceOf[String]
+    log("Compiling...")
+    val res = await(Ajax.post("/compile", code))
 
-          }catch{case e =>
-            log(req.responseText)
-            log("Failure")
-          }
-        }
-        req.open("POST", "/compile")
-        req.send(code)
-      }
+    val result = js.JSON.parse(res.responseText)
+    logspam.textContent += result.logspam
+    if(result.success.asInstanceOf[js.Boolean]){
+      clear()
+      js.eval(""+result.code)
+      log(span("Success"))
+    }else{
+      log(span("Failure"))
+    }
+  }
+
+  def complete() = async {
+
+    val Seq(row, col) = Seq(
+      editor.getCursorPosition().row,
+      editor.getCursorPosition().column
+    ).map(_.asInstanceOf[js.Number].toInt)
+
+    val code = editor.getSession().getValue().asInstanceOf[String]
+    val intOffset =code.split("\n").take(row).map(_.length + 1).sum + col
+    log("Completing...")
+    val xhr = await(Ajax.post("/complete/" + intOffset, code))
+    val result = js.JSON.parse(xhr.responseText)
+    dom.console.log(result)
+
+  }
+  def save(): Unit = async{
+    val code = editor.getSession().getValue().asInstanceOf[String]
+    val resultId = saved.lift(code) match{
+      case Some(id) => id
+      case None =>
+        val res = await(Ajax.post("https://api.github.com/gists",
+          data = js.JSON.stringify(
+            lit(
+              description = "Scala.jsFiddle gist",
+              public = true,
+              files = js.Dictionary(
+                ("Main.scala": js.String) -> lit(
+                  content = code
+                )
+              )
+            )
+          )
+        ))
+        val result = js.JSON.parse(res.responseText)
+        saved(code) = result.id.asInstanceOf[js.Number].toInt
+        result.id
     }
 
-    editor.commands.addCommand(lit(
-      name = "saveFile",
-      bindKey = lit(
-        win = "Ctrl-Enter",
-        mac = "Command-Enter",
-        sender = "editor|cli"
-      ),
-      exec = callback: js.Function0[_]
-    ))
-    editor.getSession().setTabSize(2)
-    callback()
+    val fiddleUrl: String = dom.document.location.host + "/gist/" + resultId
+    log("Saved as ", a(href:=fiddleUrl)(fiddleUrl))
+    dom.history.pushState(null, null, "/gist/" + resultId)
+    val gistUrl = "https://gist.github.com/" + resultId
+    log("Or view on github at ", a(href:=gistUrl)(gistUrl))
   }
 }

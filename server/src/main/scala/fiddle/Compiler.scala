@@ -1,6 +1,6 @@
 package fiddle
 
-import scala.tools.nsc.{Global, Settings}
+import scala.tools.nsc.Settings
 import java.net.URLClassLoader
 import scala.reflect.io.{VirtualFile, VirtualDirectory}
 import scala.tools.nsc.util.ClassPath
@@ -8,14 +8,60 @@ import java.io.{PrintWriter, Writer}
 import akka.util.ByteString
 import scala.tools.nsc.reporters.ConsoleReporter
 import scala.tools.nsc.plugins.Plugin
+import scala.concurrent.Future
+
+import scala.reflect.internal.util.{BatchSourceFile, OffsetPosition}
+import scala.tools.nsc.interactive.Response
 
 object Compiler{
-  def apply(src: Array[Byte], logger: String => Unit): Option[String] = {
-    lazy val settings = new Settings
 
+  def get[T](func: Response[T] => Unit) = {
+    val r = new Response[T]
+    func(r)
+    r.get.left.get
+  }
+
+  def autocomplete(code: String, pos: Int): List[String] = {
+    println("autocomplete")
+    println(code.take(pos))
+    println("-----------------------------")
+    println(code.drop(pos))
+    println("-----------------------------")
+
+    val file = new BatchSourceFile(makeFile(code.getBytes), code)
+
+    val vd = new VirtualDirectory("(memory)", None)
+    val compiler = initGlobal(
+      (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter){
+        override lazy val plugins = List[Plugin](new scala.scalajs.compiler.ScalaJSPlugin(this))
+      },
+      vd,
+      s => println(":::::::::: " + s)
+    )
+    val position = new OffsetPosition(file, pos)
+
+    get[Unit](compiler.askReload(List(file), _))
+
+    val res = compiler.ask{ () =>
+      val members = get[List[compiler.Member]](compiler.askTypeCompletion(position, _))
+      members.map(_.sym.decodedName)
+    }
+    println("autocomplete res " + res)
+    res
+  }
+  def makeFile(src: Array[Byte]) = {
+    val singleFile = new VirtualFile("Main.scala")
+
+    val output = singleFile.output
+    output.write(src)
+    output.close()
+    singleFile
+  }
+  def initGlobal[T](make: (Settings, ConsoleReporter) => T, vd: VirtualDirectory, logger: String => Unit) = {
+    lazy val settings = new Settings
     val loader = getClass.getClassLoader.asInstanceOf[URLClassLoader]
     val entries = loader.getURLs map(_.getPath)
-    val vd = new VirtualDirectory("(memory)", None)
+
     settings.outputDirs.setSingleOutput(vd)
     settings.classpath.value = ClassPath.join(entries: _*)
 
@@ -31,16 +77,19 @@ object Compiler{
       def close(): Unit = ()
     }
     val reporter = new ConsoleReporter(settings, scala.Console.in, new PrintWriter(writer))
-    val compiler = new Global(settings, reporter){
-      override lazy val plugins = List[Plugin](new scala.scalajs.compiler.ScalaJSPlugin(this))
-    }
+    make(settings, reporter)
 
-    val singleFile = new VirtualFile("Main.scala")
-
-    val output = singleFile.output
-    output.write(src)
-    output.close()
-
+  }
+  def apply(src: Array[Byte], logger: String => Unit): Option[String] = {
+    val singleFile = makeFile(src)
+    val vd = new VirtualDirectory("(memory)", None)
+    val compiler = initGlobal(
+      (settings, reporter) => new scala.tools.nsc.Global(settings, reporter){
+        override lazy val plugins = List[Plugin](new scala.scalajs.compiler.ScalaJSPlugin(this))
+      },
+      vd,
+      logger
+    )
     val run = new compiler.Run()
     run.compileFiles(List(singleFile))
 

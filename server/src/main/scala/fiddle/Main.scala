@@ -18,6 +18,9 @@ import java.net.SocketPermission
 
 import spray.json._
 import DefaultJsonProtocol._
+import scala.concurrent.Future
+import scala.tools.nsc.interpreter.Completion
+import scala.reflect.internal.util.OffsetPosition
 
 object Main extends SimpleRoutingApp {
   implicit val system = ActorSystem()
@@ -38,7 +41,10 @@ object Main extends SimpleRoutingApp {
         get {
           encodeResponse(Gzip) {
             pathSingleSlash {
-                getFromResource("index.html")
+              getFromResource("index.html")
+            } ~
+            path("gist" / IntNumber){ i =>
+              getFromResource("index.html")
             } ~
             pathPrefix("js") {
               getFromResourceDirectory("..")
@@ -49,16 +55,29 @@ object Main extends SimpleRoutingApp {
         post {
           path("compile"){
             compileStuff
+          } ~
+          path("complete" / IntNumber){
+            completeStuff
           }
         }
       }
     }
 
   }
+  def completeStuff(offset: Int)(ctx: RequestContext): Unit = {
+//    setSecurityManager
+    val res = Compiler.autocomplete(ctx.request.entity.asString, offset)
+    ctx.responder ! HttpResponse(
+      entity=JsArray(res.map(_.toJson):_*).toString,
+      headers=List(
+        `Access-Control-Allow-Origin`(spray.http.AllOrigins)
+      )
+    )
+  }
   def compileStuff(ctx: RequestContext): Unit = try{
 
     val output = mutable.Buffer.empty[String]
-    setSecurityManager
+//    setSecurityManager
 
     val res = Compiler(
       ctx.request.entity.data.toByteArray,

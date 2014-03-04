@@ -16,7 +16,8 @@ libraryDependencies ++= Seq(
   "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.2",
   "com.scalatags" % "scalatags_2.10" % "0.2.3-JS",
   "com.scalarx" % "scalarx_2.10" % "0.2.2-JS",
-  "org.scala-lang.modules.scalajs" %% "scalajs-jquery" % "0.1-SNAPSHOT"
+  "org.scala-lang.modules.scalajs" %% "scalajs-jquery" % "0.1-SNAPSHOT",
+  "org.scala-lang.modules" %% "scala-async" % "0.9.0-M4"
 )
 
 // Specify additional .js file to be passed to package-js and optimize-js
