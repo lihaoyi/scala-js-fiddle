@@ -53,14 +53,17 @@ object Page{
       |  }
       |}
     """.stripMargin
+  val red = span(color:="#ff8888")
+  val blue = span(color:="#8888ff")
+  val green = span(color:="#88ff88")
 }
-
+import Page.{red, green, blue}
 object Client{
 
   def sandbox = js.Dynamic.global.sandbox.asInstanceOf[dom.HTMLDivElement]
   def canvas = js.Dynamic.global.canvas.asInstanceOf[dom.HTMLCanvasElement]
   def logspam = js.Dynamic.global.logspam.asInstanceOf[dom.HTMLPreElement]
-
+  dom.document.body.innerHTML = Page.body.mkString
   lazy val editor: js.Dynamic = {
     val editor = global.ace.edit("editor")
     editor.setTheme("ace/theme/twilight")
@@ -107,12 +110,11 @@ object Client{
     }
     sandbox.innerHTML = sandbox.innerHTML
   }
-  val saved = mutable.Map.empty[String, Int]
+  val saved = mutable.Map.empty[String, String]
   var logged = div(
-    div("- Cmd/Ctrl-Enter to compile & execute"),
+    div("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-S"), " to save your code to a Gist"),
     div("- Draw pictures on the right pane and see println()s in the browser console"),
-    div("- Cmd/Ctrl-S to save your code to a Github Gist")
-
+    div("- Navigate to ", blue("http://", dom.document.location.host.toString, "/gist/<gist-id>")," to load it from one")
   )
 
   def log(s: Modifier*): Unit = {
@@ -122,46 +124,51 @@ object Client{
   }
 
   def main(args: Array[String]): Unit = {
-    dom.document.body.innerHTML = Page.body.mkString
+
     clear()
     if (dom.document.location.pathname == "/"){
       editor.getSession().setValue(Page.starting)
       compile()
-    } else async {
-      val gistId = dom.document.location.pathname.drop(6)
-      val gistUrl = "https://gist.github.com/" + gistId
-
-      log("Loading code from gist ", a(href:=gistUrl)(gistUrl), "...")
-
-      val res = await(Ajax.get("https://api.github.com/gists/" + gistId))
-      val result = js.JSON.parse(res.responseText)
-
-      val content = result.files
-                          .selectDynamic("Main.scala")
-                          .content
-                          .toString
-      editor.getSession().setValue(content)
-      saved(content) = gistId.toInt
-      compile()
-    }.onFailure{ case _ =>
-      log("Loading failed. Falling back to default code.")
-      editor.getSession().setValue(Page.starting)
-      compile()
-    }
+    } else load(dom.document.location.pathname.drop(6))
   }
-  def compile(): Unit = async {
+  def load(gistId: String): Unit = async {
+
+    val gistUrl = "https://gist.github.com/" + gistId
+
+    log("Loading code from gist ", a(href:=gistUrl)(gistUrl), "...")
+
+    val res = await(Ajax.get("https://api.github.com/gists/" + gistId))
+    val result = js.JSON.parse(res.responseText)
+
+    val allFiles = result.files.asInstanceOf[js.Dictionary[js.Dynamic]]
+
+    val mainFile = allFiles("Main.scala")
+
+    val firstFile = allFiles(js.Object.keys(allFiles)(0).toString)
+
+    val content = (if (!mainFile.isInstanceOf[js.Undefined]) mainFile else firstFile).selectDynamic("content").toString
+
+    editor.getSession().setValue(content)
+    saved(content) = gistId
+    compile()
+  }.onFailure{ case e =>
+    log(red(s"Loading failed with $e, Falling back to default example."))
+    editor.getSession().setValue(Page.starting)
+    compile()
+  }
+  def compile(): Future[Unit] = async {
     val code = editor.getSession().getValue().asInstanceOf[String]
     log("Compiling...")
     val res = await(Ajax.post("/compile", code))
 
     val result = js.JSON.parse(res.responseText)
-    logspam.textContent += result.logspam
+    log(result.logspam.toString)
     if(result.success.asInstanceOf[js.Boolean]){
       clear()
       js.eval(""+result.code)
-      log(span("Success"))
+      log(green("Success"))
     }else{
-      log(span("Failure"))
+      log(red("Failure"))
     }
   }
 
@@ -181,6 +188,7 @@ object Client{
 
   }
   def save(): Unit = async{
+    await(compile())
     val code = editor.getSession().getValue().asInstanceOf[String]
     val resultId = saved.lift(code) match{
       case Some(id) => id
@@ -199,14 +207,14 @@ object Client{
           )
         ))
         val result = js.JSON.parse(res.responseText)
-        saved(code) = result.id.asInstanceOf[js.Number].toInt
+        saved(code) = result.id.toString
         result.id
     }
 
     val fiddleUrl = "http://" + dom.document.location.host + "/gist/" + resultId
-    log("Saved as ", a(href:=fiddleUrl)(fiddleUrl))
+    log(green("Saved as ", a(href:=fiddleUrl)(fiddleUrl)))
     dom.history.pushState(null, null, "/gist/" + resultId)
     val gistUrl = "https://gist.github.com/" + resultId
-    log("Or view on github at ", a(href:=gistUrl)(gistUrl))
+    log(green("Or view on github at ", a(href:=gistUrl)(gistUrl)))
   }
 }

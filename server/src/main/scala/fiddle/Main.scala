@@ -21,6 +21,8 @@ import DefaultJsonProtocol._
 import scala.concurrent.Future
 import scala.tools.nsc.interpreter.Completion
 import scala.reflect.internal.util.OffsetPosition
+import spray.http.HttpHeaders.`Cache-Control`
+import spray.http.CacheDirectives.{`max-age`, `public`}
 
 object Main extends SimpleRoutingApp {
   implicit val system = ActorSystem()
@@ -39,17 +41,19 @@ object Main extends SimpleRoutingApp {
     startServer("localhost", port = 8080) {
       cache(simpleCache) {
         get {
-          encodeResponse(Gzip) {
-            pathSingleSlash {
-              getFromResource("index.html")
-            } ~
-            path("gist" / IntNumber){ i =>
-              getFromResource("index.html")
-            } ~
-            pathPrefix("js") {
-              getFromResourceDirectory("..")
-            } ~
-            getFromResourceDirectory("")
+          respondWithHeader(`Cache-Control`(`public`, `max-age`(60L*60L*24L))) {
+            encodeResponse(Gzip) {
+              pathSingleSlash {
+                getFromResource("index.html")
+              } ~
+              path("gist" / Segment){ i =>
+                getFromResource("index.html")
+              } ~
+              pathPrefix("js") {
+                getFromResourceDirectory("..")
+              } ~
+              getFromResourceDirectory("")
+            }
           }
         } ~
         post {
