@@ -38,3 +38,11 @@ a:link{
 a:visited{
     color:#ff88ff;
 }
+
+html, body, #spinner-holder{
+    height: 100%;
+    width: 100%;
+}
+#spinner-holder{
+    display: table;
+}

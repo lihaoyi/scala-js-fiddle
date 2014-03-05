@@ -1,19 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html style="">
 <head>
 
     <meta charset="utf-8" />
     <title>Scala.jsFiddle</title>
     <script src="/ace/ace.js" type="text/javascript" charset="utf-8"></script>
     <link rel="stylesheet" href="/styles.css" />
-
-    <!--<script type="text/javascript" src="../example-opt.js"></script>-->
-    <script type="text/javascript" src="/example-extdeps.js"></script>
-    <script type="text/javascript" src="/example-intdeps.js"></script>
-
-    <script type="text/javascript" src="http://localhost:12345/workbench.js"></script>
+    <link rel="stylesheet" href="/pure-base-min.css" />
 </head>
 <body>
+
+<div id="spinner-holder">
+    <div style="display:table-cell; vertical-align:middle; height: 100%">
+        <div style="text-align: center">
+            <h1>Loading Scala.jsFiddle</h1>
+            <img src="/spinner.gif" height="196"/>
+            <p>This takes a while the first time. Please be patient =)</p>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="/example-extdeps.js"></script>
+<script type="text/javascript" src="/example-intdeps.js"></script>
+
+<script type="text/javascript" src="http://localhost:12345/workbench.js"></script>
 <script type="text/javascript" src="/example.js"></script>
 </body>
 
