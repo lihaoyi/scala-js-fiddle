@@ -3,7 +3,7 @@ import scala.scalajs.js
 import js.Dynamic.{global, literal => lit}
 import org.scalajs.dom
 import collection.mutable
-import scalatags.{Modifier, Tags2}
+import scalatags.{HtmlTag, Modifier, Tags2}
 import scala.concurrent.{Promise, Future}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.async.Async.{async, await}
@@ -15,7 +15,8 @@ object Page{
     pre(id:="editor"),
     pre(id:="logspam"),
     div(id:="sandbox")(
-      canvas(id:="canvas", style:="position: absolute")
+      canvas(id:="canvas", style:="position: absolute"),
+      div(id:="output")
     )
   )
 
@@ -24,14 +25,36 @@ object Page{
   val green = span(color:="#88ff88")
 }
 import Page.{red, green, blue}
+object Output{
+  private[this] var outputted = div()
+  def println(s: Any) = {
+    val modifier = s match{
+      case t: Modifier => t
+      case x => div(x.toString)
+    }
+    outputted = modifier.transform(outputted)
+    Client.output.innerHTML = outputted.toString()
+    Client.output.scrollTop = Client.output.scrollHeight - Client.output.clientHeight
+  }
+  def clear(){
+    outputted = div()
+    Client.output.innerHTML = outputted.toString()
+  }
+  def scroll(px: Int){
+    Client.output.scrollTop = Client.output.scrollTop + px
+  }
+}
+
 object Client{
 
-  def sandbox = js.Dynamic.global.sandbox.asInstanceOf[dom.HTMLDivElement]
-  def canvas = js.Dynamic.global.canvas.asInstanceOf[dom.HTMLCanvasElement]
+  lazy val sandbox = js.Dynamic.global.sandbox.asInstanceOf[dom.HTMLDivElement]
+  lazy val canvas = js.Dynamic.global.canvas.asInstanceOf[dom.HTMLCanvasElement]
+  lazy val renderer = canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
+  lazy val output = js.Dynamic.global.output.asInstanceOf[dom.HTMLDivElement]
   def logspam = js.Dynamic.global.logspam.asInstanceOf[dom.HTMLPreElement]
   dom.document.body.innerHTML = Page.body.mkString
 
-  val cloned = sandbox.innerHTML
+  val cloned = output.innerHTML
   lazy val editor: js.Dynamic = {
     val editor = global.ace.edit("editor")
     editor.setTheme("ace/theme/twilight")
@@ -63,7 +86,8 @@ object Client{
       dom.clearInterval(i)
       dom.clearTimeout(i)
     }
-    sandbox.innerHTML = cloned
+
+    output.innerHTML = cloned
     canvas.height = sandbox.clientHeight
     canvas.width = sandbox.clientWidth
   }
@@ -83,7 +107,6 @@ object Client{
   }
   val defaultGistId = "9350814"
   def main(args: Array[String]): Unit = {
-
     clear()
     if (dom.document.location.pathname == "/") load(defaultGistId)
     else load(dom.document.location.pathname.drop(6))

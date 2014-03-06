@@ -26,6 +26,12 @@
     right: 0;
     background-color: black;
 }
+#output{
+    position: absolute;
+    width: 100%;
+    max-height: 100%;
+    overflow: auto;
+}
 
 body {
     overflow: hidden;

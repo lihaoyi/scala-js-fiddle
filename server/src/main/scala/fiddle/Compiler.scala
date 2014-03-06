@@ -4,7 +4,7 @@ import scala.tools.nsc.Settings
 import java.net.URLClassLoader
 import scala.reflect.io.{VirtualFile, VirtualDirectory}
 import scala.tools.nsc.util.ClassPath
-import java.io.{PrintWriter, Writer}
+import java.io.{File, PrintWriter, Writer}
 import akka.util.ByteString
 import scala.tools.nsc.reporters.ConsoleReporter
 import scala.tools.nsc.plugins.Plugin
@@ -21,7 +21,9 @@ object Compiler{
     r.get.left.get
   }
 
-  def autocomplete(code: String, pos: Int): List[String] = {
+  def autocomplete(rawCode: String, rawPos: Int): List[String] = {
+    val code = "object Omg{\n" + rawCode + "}"
+    val pos = rawPos + "object Omg{\n".length
     println("autocomplete")
     println(code.take(pos))
     println("-----------------------------")
@@ -32,9 +34,7 @@ object Compiler{
 
     val vd = new VirtualDirectory("(memory)", None)
     val compiler = initGlobal(
-      (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter){
-        override lazy val plugins = List[Plugin](new scala.scalajs.compiler.ScalaJSPlugin(this))
-      },
+      (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter),
       vd,
       s => println(":::::::::: " + s)
     )
@@ -60,8 +60,10 @@ object Compiler{
   def initGlobal[T](make: (Settings, ConsoleReporter) => T, vd: VirtualDirectory, logger: String => Unit) = {
     lazy val settings = new Settings
     val loader = getClass.getClassLoader.asInstanceOf[URLClassLoader]
-    val entries = loader.getURLs map(_.getPath)
-
+    val entries = loader.getURLs.map(_.getPath) :+ "target/scala-2.10/classes/classes"
+    println("Main.initGlobal.entries")
+    println(entries.toSeq)
+    println(new File("").getAbsolutePath)
     settings.outputDirs.setSingleOutput(vd)
     settings.classpath.value = ClassPath.join(entries: _*)
 
@@ -81,7 +83,15 @@ object Compiler{
 
   }
   def apply(src: Array[Byte], logger: String => Unit): Option[String] = {
-    val singleFile = makeFile(src)
+    val prelude =
+      """
+        |import fiddle.{Output => output}
+        |import fiddle.Output.println
+        |import fiddle.Client.canvas
+        |import fiddle.Client.renderer
+        |import fiddle.Page.{red, green, blue}
+      """.stripMargin
+    val singleFile = makeFile(prelude.getBytes ++ src)
     val vd = new VirtualDirectory("(memory)", None)
     val compiler = initGlobal(
       (settings, reporter) => new scala.tools.nsc.Global(settings, reporter){

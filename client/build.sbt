@@ -28,6 +28,6 @@ unmanagedSources in (Compile, ScalaJSKeys.packageJS) +=
 
 workbenchSettings
 
-bootSnippet := "ScalaJS.modules.fiddle_Client().main();"
+bootSnippet := "ScalaJS.modules.fiddle_Client().main__AT__V();"
 
 updateBrowsers <<= updateBrowsers.triggeredBy(packageJS in Compile)

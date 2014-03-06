@@ -88,7 +88,6 @@ object Main extends SimpleRoutingApp {
       output.append(_)
     )
 
-    def clean(s: String) = s.replace("\"", "\\\"").replace("\n", "\\n")
     val returned = res match {
       case None =>
         JsObject(
