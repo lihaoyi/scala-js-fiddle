@@ -20,9 +20,9 @@ object Page{
     )
   )
 
-  val red = span(color:="#ff8888")
-  val blue = span(color:="#8888ff")
-  val green = span(color:="#88ff88")
+  val red = span(color:="#ffaaaa")
+  val blue = span(color:="#aaaaff")
+  val green = span(color:="#aaffaa")
 }
 import Page.{red, green, blue}
 object Output{
