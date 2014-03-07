@@ -49,6 +49,9 @@ object Main extends SimpleRoutingApp {
               path("gist" / Segment){ i =>
                 getFromResource("index.html")
               } ~
+              path("gist" / Segment / Segment){ (i, j) =>
+                getFromResource("index.html")
+              } ~
               pathPrefix("js") {
                 getFromResourceDirectory("..")
               } ~

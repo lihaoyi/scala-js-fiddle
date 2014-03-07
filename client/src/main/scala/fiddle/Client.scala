@@ -16,7 +16,12 @@ object Page{
     pre(id:="logspam"),
     div(id:="sandbox")(
       canvas(id:="canvas", style:="position: absolute"),
-      div(id:="output")
+      div(
+        id:="output",
+        color:="lightgrey",
+        padding:="25px",
+        boxSizing:="border-box"
+      )
     )
   )
 
@@ -26,12 +31,13 @@ object Page{
 }
 import Page.{red, green, blue}
 object Output{
+
   private[this] var outputted = div()
-  def println(s: Any) = {
-    val modifier = s match{
+  def println(s: Any*) = {
+    val modifier = div(s.map{
       case t: Modifier => t
-      case x => div(x.toString)
-    }
+      case x => x.toString: Modifier
+    }:_*)
     outputted = modifier.transform(outputted)
     Client.output.innerHTML = outputted.toString()
     Client.output.scrollTop = Client.output.scrollHeight - Client.output.clientHeight
@@ -50,6 +56,7 @@ object Client{
   lazy val sandbox = js.Dynamic.global.sandbox.asInstanceOf[dom.HTMLDivElement]
   lazy val canvas = js.Dynamic.global.canvas.asInstanceOf[dom.HTMLCanvasElement]
   lazy val renderer = canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
+  
   lazy val output = js.Dynamic.global.output.asInstanceOf[dom.HTMLDivElement]
   def logspam = js.Dynamic.global.logspam.asInstanceOf[dom.HTMLPreElement]
   dom.document.body.innerHTML = Page.body.mkString
@@ -86,7 +93,7 @@ object Client{
       dom.clearInterval(i)
       dom.clearTimeout(i)
     }
-
+    Output.clear()
     output.innerHTML = cloned
     canvas.height = sandbox.clientHeight
     canvas.width = sandbox.clientWidth
@@ -100,40 +107,55 @@ object Client{
   def logln(s: Modifier*): Unit = {
     log(div(s:_*))
   }
+
   def log(s: Modifier*): Unit = {
     logged = s.foldLeft(logged)((a, b) => b.transform(a))
     logspam.innerHTML = logged.toString()
     logspam.scrollTop = logspam.scrollHeight - logspam.clientHeight
   }
-  val defaultGistId = "9350814"
+  val defaultGistId = "9405209"
+  val defaultFile = "LandingPage.scala"
+
   def main(args: Array[String]): Unit = {
     clear()
-    if (dom.document.location.pathname == "/") load(defaultGistId)
-    else load(dom.document.location.pathname.drop(6))
+    if (dom.document.location.pathname == "/") load(defaultGistId, Some(defaultFile))
+    else {
+      val path = dom.document.location.pathname.drop("/gist/".length)
+      val parts = path.split("/")
+      load(
+        parts(0), parts.lift(1)
+      )
+    }
   }
-  def load(gistId: String): Unit = async {
+  def load(gistId: String, file: Option[String]): Unit = async {
 
     val gistUrl = "https://gist.github.com/" + gistId
 
-    logln("Loading code from gist ", a(href:=gistUrl)(gistUrl), "...")
+    logln(
+      "Loading ",
+      file.fold(span)(s => span(
+        a(href:=gistUrl + "#file-" + s.toLowerCase.replace('.', '-'))(s),
+        " from "
+      )),
+      a(href:=gistUrl)(gistUrl),
+      "..."
+    )
 
     val res = await(Ajax.get("https://api.github.com/gists/" + gistId))
     val result = js.JSON.parse(res.responseText)
 
     val allFiles = result.files.asInstanceOf[js.Dictionary[js.Dynamic]]
-
-    val mainFile = allFiles("Main.scala")
+    val mainFile = allFiles(file.getOrElse(""): String)
 
     val firstFile = allFiles(js.Object.keys(allFiles)(0).toString)
-
     val content = (if (!mainFile.isInstanceOf[js.Undefined]) mainFile else firstFile).selectDynamic("content").toString
 
     editor.getSession().setValue(content)
     saved(content) = gistId
     compile()
-  }.onFailure{ case e =>
+  }.recover{ case e =>
     logln(red(s"Loading failed with $e, Falling back to default example."))
-    load(defaultGistId)
+    load(defaultGistId, Some(defaultFile))
   }
   def compile(): Future[Unit] = async {
     val code = editor.getSession().getValue().asInstanceOf[String]
@@ -196,7 +218,7 @@ object Client{
         result.id
     }
 
-    val fiddleUrl = "http://" + dom.document.location.host + "/gist/" + resultId
+    val fiddleUrl = dom.document.location.origin + "/gist/" + resultId
     logln("Saved as ", a(href:=fiddleUrl)(fiddleUrl))
     dom.history.pushState(null, null, "/gist/" + resultId)
     val gistUrl = "https://gist.github.com/" + resultId
