@@ -13,3 +13,5 @@ addSbtPlugin("org.scala-lang.modules.scalajs" % "scalajs-sbt-plugin" % "0.3")
 addSbtPlugin("com.lihaoyi" % "workbench" % "0.1")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.10.0")
+
+addSbtPlugin("io.spray" % "sbt-revolver" % "0.7.1")
