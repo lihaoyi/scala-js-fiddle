@@ -15,35 +15,51 @@ import scala.tools.nsc.interactive.Response
 
 object Compiler{
   import concurrent.ExecutionContext.Implicits.global
+  val blacklist = Seq(
+    "<init>"
+  )
+  val prelude =
+    """
+      |import fiddle.{Output => output}
+      |import fiddle.Output.println
+      |import fiddle.Client.canvas
+      |import fiddle.Client.renderer
+      |import fiddle.Page.{red, green, blue}
+    """.stripMargin
 
   def toFuture[T](func: Response[T] => Unit): Future[Either[T, Throwable]] = {
     val r = new Response[T]
     Future { func(r) ; r.get }
   }
 
-  val vd = new VirtualDirectory("(memory)", None)
-  // global can be reused, just create new runs for new compiler invocations
-  val compiler = initGlobal(
-    (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter),
-    vd,
-    s => println(":::::::::: " + s)
-  )
+
 
   def autocomplete(code: String, pos: Int): Future[List[String]] = {
+    val vd = new VirtualDirectory("(memory)", None)
+    // global can be reused, just create new runs for new compiler invocations
+    val compiler = initGlobal(
+      (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter),
+      vd,
+      s => println(":::::::::: " + s)
+    )
     println("autocomplete")
     println(code.take(pos))
     println("-----------------------------")
     println(code.drop(pos))
     println("-----------------------------")
 
-    val file      = new BatchSourceFile(makeFile(code.getBytes), code)
-    val position  = new OffsetPosition(file, pos)
+    val file      = new BatchSourceFile(makeFile(prelude.getBytes ++ code.getBytes), prelude + code)
+    val position  = new OffsetPosition(file, pos + prelude.length)
 
     for (
       _         <- toFuture[Unit](compiler.askReload(List(file), _));
       maybeMems <- toFuture[List[compiler.Member]](compiler.askTypeCompletion(position, _))
     ) yield {
-      val res = maybeMems.left.get.map(_.sym.decodedName)
+      val res = maybeMems.left
+                         .get
+                         .map(_.sym.decodedName)
+                         .filter(x => !blacklist.contains(x))
+                         .distinct
       println("autocomplete res " + res)
       res
     }
@@ -51,7 +67,6 @@ object Compiler{
 
   def makeFile(src: Array[Byte]) = {
     val singleFile = new VirtualFile("Main.scala")
-
     val output = singleFile.output
     output.write(src)
     output.close()
@@ -86,14 +101,7 @@ object Compiler{
 
   }
   def apply(src: Array[Byte], logger: String => Unit): Option[String] = {
-    val prelude =
-      """
-        |import fiddle.{Output => output}
-        |import fiddle.Output.println
-        |import fiddle.Client.canvas
-        |import fiddle.Client.renderer
-        |import fiddle.Page.{red, green, blue}
-      """.stripMargin
+
     val singleFile = makeFile(prelude.getBytes ++ src)
     val vd = new VirtualDirectory("(memory)", None)
     val compiler = initGlobal(

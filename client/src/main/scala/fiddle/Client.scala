@@ -28,10 +28,12 @@ object Page{
   val red = span(color:="#ffaaaa")
   val blue = span(color:="#aaaaff")
   val green = span(color:="#aaffaa")
-}
-import Page.{red, green, blue}
-object Output{
 
+}
+
+import Page.{red, green, blue}
+
+object Output{
   private[this] var outputted = div()
   def println(s: Any*) = {
     val modifier = div(s.map{
@@ -58,20 +60,88 @@ object Client{
   lazy val renderer = canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
   
   lazy val output = js.Dynamic.global.output.asInstanceOf[dom.HTMLDivElement]
+
   def logspam = js.Dynamic.global.logspam.asInstanceOf[dom.HTMLPreElement]
   dom.document.body.innerHTML = Page.body.mkString
 
   val cloned = output.innerHTML
+
+  class CompleteState(val row: Int,
+                      val column: Int,
+                      val prefix: String,
+                      val suffix: String,
+                      val allOptions: Seq[String],
+                      var scroll: Int = 0,
+                      val height: Int = 5){
+
+    def options = allOptions.filter(_.startsWith(namePrefix))
+    val pos = lit(row=row+1, column=0)
+
+    val validChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_".toSet
+    val namePrefix = prefix.reverse
+                           .takeWhile(validChars)
+                           .reverse
+
+    println("CompleteState " + namePrefix)
+    dom.console.log(pos)
+    def modulo(a: Int, b: Int) = (a % b + b) % b
+    def render(): Unit = {
+
+      val start = modulo(scroll + 1, options.length)
+      val end = modulo(scroll + height, options.length)
+
+      val sliced =
+        if(end > start) options.slice(start, end)
+        else options.drop(start) ++ options.take(end)
+
+      renderSelected()
+
+      editor.getSession().insert(
+        pos,
+        sliced.padTo(height, "")
+              .map(" " * (column - namePrefix.length) + _ + "\n")
+              .mkString
+      )
+    }
+    def renderSelected(): Unit = {
+      editor.getSession()
+            .getDocument()
+            .insertInLine(lit(row=row, column=column + namePrefix.length), options(modulo(scroll, options.length)).drop(namePrefix.length))
+    }
+    def clear(): Unit = {
+      println("CLEAR CLEAR CLEAR CLEAR CLEAR CLEAR CLEAR CLEAR CLEAR CLEAR")
+      println(options)
+      println(modulo(scroll, options.length))
+
+      editor.getSession()
+            .getDocument()
+            .removeInLine(row, column, column + options(modulo(scroll, options.length)).length)
+
+      editor.getSession()
+            .getDocument()
+            .removeLines(row+1, height + row)
+    }
+    def update(): Unit = {
+
+      clear()
+      render()
+    }
+  }
+
+  var autocompleted: Option[CompleteState] = None
+
   lazy val editor: js.Dynamic = {
     val editor = global.ace.edit("editor")
     editor.setTheme("ace/theme/twilight")
     editor.getSession().setMode("ace/mode/scala")
     editor.renderer.setShowGutter(false)
+
     val bindings = Seq(
       ("Compile", "Enter", compile _),
       ("Save", "S", save _),
       ("Complete", "`", complete _)
     )
+
     for ((name, key, func) <- bindings){
       editor.commands.addCommand(lit(
         name = name,
@@ -84,7 +154,33 @@ object Client{
       ))
     }
 
+    val orig = editor.keyBinding.onCommandKey.bind(editor.keyBinding)
+    editor.keyBinding.onCommandKey = {(e: js.Dynamic, hashId: js.Dynamic, keyCode: js.Number) =>
+      println("Intercept! " + keyCode)
+      (autocompleted, keyCode) match{
+        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.escape =>
+          a.clear()
+          autocompleted = None
+        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.down =>
+          a.clear()
+          a.scroll += 1
+          a.render()
+        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.up =>
+          a.clear()
+          a.scroll -= 1
+          a.render()
+        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.enter =>
+          a.clear()
+          a.renderSelected()
+          autocompleted = None
+          e.preventDefault()
+        case _ =>
+          orig(e, hashId, keyCode)
+      }
+    }: js.Function3[js.Dynamic, js.Dynamic, js.Number, _]
+
     editor.getSession().setTabSize(2)
+    js.Dynamic.global.ed = editor
     editor
   }
 
@@ -113,8 +209,7 @@ object Client{
     logspam.innerHTML = logged.toString()
     logspam.scrollTop = logspam.scrollHeight - logspam.clientHeight
   }
-  val defaultGistId = "9405209"
-  val defaultFile = "LandingPage.scala"
+  val (defaultGistId, defaultFile) = ("9405209", "LandingPage.scala")
 
   def main(args: Array[String]): Unit = {
     clear()
@@ -157,7 +252,9 @@ object Client{
     logln(red(s"Loading failed with $e, Falling back to default example."))
     load(defaultGistId, Some(defaultFile))
   }
+
   def compile(): Future[Unit] = async {
+
     val code = editor.getSession().getValue().asInstanceOf[String]
     log("Compiling... ")
     val res = await(Ajax.post("/compile", code))
@@ -174,25 +271,37 @@ object Client{
       log(red("Failure"))
     }
     logln()
-  }.transform(x => x, { case e =>
+  }.recover{ case e =>
     e.printStackTrace()
     e
-  })
+  }
 
   def complete() = async {
+    if (autocompleted == None){
+      val Seq(row, column) = Seq(
+        editor.getCursorPosition().row,
+        editor.getCursorPosition().column
+      ).map(_.asInstanceOf[js.Number].toInt)
 
-    val Seq(row, col) = Seq(
-      editor.getCursorPosition().row,
-      editor.getCursorPosition().column
-    ).map(_.asInstanceOf[js.Number].toInt)
+      val code = editor.getSession().getValue().asInstanceOf[String]
+      val intOffset = code.split("\n").take(row).map(_.length + 1).sum + column
 
-    val code = editor.getSession().getValue().asInstanceOf[String]
-    val intOffset =code.split("\n").take(row).map(_.length + 1).sum + col
-    logln("Completing...")
-    val xhr = await(Ajax.post("/complete/" + intOffset, code))
-    val result = js.JSON.parse(xhr.responseText)
-    dom.console.log(result)
+      logln("Completing...")
 
+      val xhr = await(Ajax.post("/complete/" + intOffset, code))
+      val result = js.JSON.parse(xhr.responseText).asInstanceOf[js.Array[String]]
+      val line = editor.getSession().getDocument().getLine(row).asInstanceOf[js.String]
+      if (result.toSeq.length > 0){
+        autocompleted = Some(new CompleteState(
+          row,
+          column,
+          line.take(column),
+          line.drop(column),
+          result.toSeq
+        ))
+        autocompleted.get.render()
+      }
+    }
   }
   def save(): Unit = async{
     await(compile())
