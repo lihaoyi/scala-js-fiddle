@@ -14,41 +14,41 @@ import scala.reflect.internal.util.{BatchSourceFile, OffsetPosition}
 import scala.tools.nsc.interactive.Response
 
 object Compiler{
+  import concurrent.ExecutionContext.Implicits.global
 
-  def get[T](func: Response[T] => Unit) = {
+  def toFuture[T](func: Response[T] => Unit): Future[Either[T, Throwable]] = {
     val r = new Response[T]
-    func(r)
-    r.get.left.get
+    Future { func(r) ; r.get }
   }
 
-  def autocomplete(rawCode: String, rawPos: Int): List[String] = {
-    val code = "object Omg{\n" + rawCode + "}"
-    val pos = rawPos + "object Omg{\n".length
+  val vd = new VirtualDirectory("(memory)", None)
+  // global can be reused, just create new runs for new compiler invocations
+  val compiler = initGlobal(
+    (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter),
+    vd,
+    s => println(":::::::::: " + s)
+  )
+
+  def autocomplete(code: String, pos: Int): Future[List[String]] = {
     println("autocomplete")
     println(code.take(pos))
     println("-----------------------------")
     println(code.drop(pos))
     println("-----------------------------")
 
-    val file = new BatchSourceFile(makeFile(code.getBytes), code)
+    val file      = new BatchSourceFile(makeFile(code.getBytes), code)
+    val position  = new OffsetPosition(file, pos)
 
-    val vd = new VirtualDirectory("(memory)", None)
-    val compiler = initGlobal(
-      (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter),
-      vd,
-      s => println(":::::::::: " + s)
-    )
-    val position = new OffsetPosition(file, pos)
-
-    get[Unit](compiler.askReload(List(file), _))
-
-    val res = compiler.ask{ () =>
-      val members = get[List[compiler.Member]](compiler.askTypeCompletion(position, _))
-      members.map(_.sym.decodedName)
+    for (
+      _         <- toFuture[Unit](compiler.askReload(List(file), _));
+      maybeMems <- toFuture[List[compiler.Member]](compiler.askTypeCompletion(position, _))
+    ) yield {
+      val res = maybeMems.left.get.map(_.sym.decodedName)
+      println("autocomplete res " + res)
+      res
     }
-    println("autocomplete res " + res)
-    res
   }
+
   def makeFile(src: Array[Byte]) = {
     val singleFile = new VirtualFile("Main.scala")
 
@@ -65,7 +65,10 @@ object Compiler{
     println(entries.toSeq)
     println(new File("").getAbsolutePath)
     settings.outputDirs.setSingleOutput(vd)
-    settings.classpath.value = ClassPath.join(entries: _*)
+    settings.classpath.value            = ClassPath.join(entries: _*)
+
+    settings.YpresentationVerbose.value = true
+    settings.YpresentationDebug.value   = true
 
     val writer = new Writer{
       var inner = ByteString()

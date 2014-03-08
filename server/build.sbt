@@ -10,7 +10,6 @@ resolvers += Resolver.url("scala-js-snapshots",
   url("http://repo.scala-js.org/repo/snapshots/"))(
     Resolver.ivyStylePatterns)
 
-resolvers += "Typesafe Repo" at "http://repo.typesafe.com/typesafe/releases/"
 
 libraryDependencies ++= Seq(
   "com.lihaoyi.utest" % "utest_2.10" % "0.1.1" % "test",
