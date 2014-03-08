@@ -21,34 +21,41 @@ object Compiler{
     r.get.left.get
   }
 
-  def autocomplete(rawCode: String, rawPos: Int): List[String] = {
-    val code = "object Omg{\n" + rawCode + "}"
-    val pos = rawPos + "object Omg{\n".length
+  val vd = new VirtualDirectory("(memory)", None)
+  // global can be reused, just create new runs for new compiler invocations
+  val compiler = initGlobal(
+    (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter),
+    vd,
+    s => println(":::::::::: " + s)
+  )
+
+  def autocomplete(code: String, pos: Int, cont: List[String] => Unit): Unit = {
     println("autocomplete")
     println(code.take(pos))
     println("-----------------------------")
     println(code.drop(pos))
     println("-----------------------------")
 
-    val file = new BatchSourceFile(makeFile(code.getBytes), code)
+    val file      = new BatchSourceFile(makeFile(code.getBytes), code)
+    val position  = new OffsetPosition(file, pos)
 
-    val vd = new VirtualDirectory("(memory)", None)
-    val compiler = initGlobal(
-      (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter),
-      vd,
-      s => println(":::::::::: " + s)
-    )
-    val position = new OffsetPosition(file, pos)
+    // TODO: make nice async pres compiler interface...
+    val reloaded  = new Response[Unit]
 
-    get[Unit](compiler.askReload(List(file), _))
+    compiler.askReload(List(file), reloaded)
 
-    val res = compiler.ask{ () =>
-      val members = get[List[compiler.Member]](compiler.askTypeCompletion(position, _))
-      members.map(_.sym.decodedName)
+    reloaded.get.left.map { _ =>
+      val completed = new Response[List[compiler.Member]]
+      compiler.askTypeCompletion(position, completed)
+
+      completed.get.left.foreach { members =>
+        val res = members.map(_.sym.decodedName)
+        println("autocomplete res " + res)
+        cont(res)
+      }
     }
-    println("autocomplete res " + res)
-    res
   }
+
   def makeFile(src: Array[Byte]) = {
     val singleFile = new VirtualFile("Main.scala")
 
@@ -65,7 +72,10 @@ object Compiler{
     println(entries.toSeq)
     println(new File("").getAbsolutePath)
     settings.outputDirs.setSingleOutput(vd)
-    settings.classpath.value = ClassPath.join(entries: _*)
+    settings.classpath.value            = ClassPath.join(entries: _*)
+
+    settings.YpresentationVerbose.value = true
+    settings.YpresentationDebug.value   = true
 
     val writer = new Writer{
       var inner = ByteString()

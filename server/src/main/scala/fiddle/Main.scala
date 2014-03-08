@@ -73,13 +73,16 @@ object Main extends SimpleRoutingApp {
   }
   def completeStuff(offset: Int)(ctx: RequestContext): Unit = {
 //    setSecurityManager
-    val res = Compiler.autocomplete(ctx.request.entity.asString, offset)
-    ctx.responder ! HttpResponse(
-      entity=JsArray(res.map(_.toJson):_*).toString,
-      headers=List(
-        `Access-Control-Allow-Origin`(spray.http.AllOrigins)
+    Compiler.autocomplete(ctx.request.entity.asString, offset, reply)
+    def reply(res: List[String]) = {
+      println(s"got autocomplete $res")
+      ctx.responder ! HttpResponse(
+        entity=JsArray(res.map(_.toJson):_*).toString,
+        headers=List(
+          `Access-Control-Allow-Origin`(spray.http.AllOrigins)
+        )
       )
-    )
+    }
   }
   def compileStuff(ctx: RequestContext): Unit = try{
 
