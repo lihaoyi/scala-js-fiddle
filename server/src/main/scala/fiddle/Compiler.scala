@@ -14,11 +14,11 @@ import scala.reflect.internal.util.{BatchSourceFile, OffsetPosition}
 import scala.tools.nsc.interactive.Response
 
 object Compiler{
+  import concurrent.ExecutionContext.Implicits.global
 
-  def get[T](func: Response[T] => Unit) = {
+  def toFuture[T](func: Response[T] => Unit): Future[Either[T, Throwable]] = {
     val r = new Response[T]
-    func(r)
-    r.get.left.get
+    Future { func(r) ; r.get }
   }
 
   val vd = new VirtualDirectory("(memory)", None)
@@ -29,7 +29,7 @@ object Compiler{
     s => println(":::::::::: " + s)
   )
 
-  def autocomplete(code: String, pos: Int, cont: List[String] => Unit): Unit = {
+  def autocomplete(code: String, pos: Int): Future[List[String]] = {
     println("autocomplete")
     println(code.take(pos))
     println("-----------------------------")
@@ -39,20 +39,13 @@ object Compiler{
     val file      = new BatchSourceFile(makeFile(code.getBytes), code)
     val position  = new OffsetPosition(file, pos)
 
-    // TODO: make nice async pres compiler interface...
-    val reloaded  = new Response[Unit]
-
-    compiler.askReload(List(file), reloaded)
-
-    reloaded.get.left.map { _ =>
-      val completed = new Response[List[compiler.Member]]
-      compiler.askTypeCompletion(position, completed)
-
-      completed.get.left.foreach { members =>
-        val res = members.map(_.sym.decodedName)
-        println("autocomplete res " + res)
-        cont(res)
-      }
+    for (
+      _         <- toFuture[Unit](compiler.askReload(List(file), _));
+      maybeMems <- toFuture[List[compiler.Member]](compiler.askTypeCompletion(position, _))
+    ) yield {
+      val res = maybeMems.left.get.map(_.sym.decodedName)
+      println("autocomplete res " + res)
+      res
     }
   }
 

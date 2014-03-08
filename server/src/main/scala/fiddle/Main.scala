@@ -26,6 +26,7 @@ import spray.http.CacheDirectives.{`max-age`, `public`}
 
 object Main extends SimpleRoutingApp {
   implicit val system = ActorSystem()
+  implicit val executionContext = system.dispatcher
 
   /**
    * Only set this once
@@ -73,11 +74,11 @@ object Main extends SimpleRoutingApp {
   }
   def completeStuff(offset: Int)(ctx: RequestContext): Unit = {
 //    setSecurityManager
-    Compiler.autocomplete(ctx.request.entity.asString, offset, reply)
-    def reply(res: List[String]) = {
-      println(s"got autocomplete $res")
+    Compiler.autocomplete(ctx.request.entity.asString, offset).foreach { res: List[String] =>
+      val response = JsArray(res.map(_.toJson):_*).toString
+      println(s"got autocomplete: sending $response")
       ctx.responder ! HttpResponse(
-        entity=JsArray(res.map(_.toJson):_*).toString,
+        entity=response,
         headers=List(
           `Access-Control-Allow-Origin`(spray.http.AllOrigins)
         )
