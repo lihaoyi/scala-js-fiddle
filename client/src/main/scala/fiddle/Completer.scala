@@ -2,7 +2,7 @@ package fiddle
 import rx._
 import scala.scalajs.js.Dynamic.{literal => lit, _}
 object Completer {
-  val validIdentChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_".toSet
+  val validIdentChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_~!#$%^&*-+=|:<>?/0123456789".toSet
   def startColumn(line: String, column: Int) = {
     line.take(column).reverse.dropWhile(validIdentChars).length
   }
