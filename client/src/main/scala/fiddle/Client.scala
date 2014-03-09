@@ -28,7 +28,6 @@ object Page{
   val red = span(color:="#ffaaaa")
   val blue = span(color:="#aaaaff")
   val green = span(color:="#aaffaa")
-
 }
 
 import Page.{red, green, blue}
@@ -53,6 +52,95 @@ object Output{
   }
 }
 
+object Editor{
+  lazy val aceDoc = editor.getSession().getDocument()
+  lazy val sess = editor.getSession()
+
+  def rowCol: (Int, Int) = {
+    val Seq(newRow, newColumn) = Seq(
+      editor.getCursorPosition().row,
+      editor.getCursorPosition().column
+    ).map(_.asInstanceOf[js.Number].toInt)
+    (newRow, newColumn)
+  }
+
+  def line = Editor.aceDoc
+                   .getLine(rowCol._1)
+                   .asInstanceOf[js.String]
+
+  lazy val editor: js.Dynamic = {
+    val editor = global.ace.edit("editor")
+    editor.setTheme("ace/theme/twilight")
+    editor.getSession().setMode("ace/mode/scala")
+    editor.renderer.setShowGutter(false)
+
+    val bindings = Seq(
+      ("Compile", "Enter", Client.compile _),
+      ("Save", "S", Client.save _),
+      ("Complete", "`", Client.complete _)
+    )
+
+    for ((name, key, func) <- bindings){
+      editor.commands.addCommand(lit(
+        name = name,
+        bindKey = lit(
+          win = "Ctrl-" + key,
+          mac = "Command-" + key,
+          sender = "editor|cli"
+        ),
+        exec = func
+      ))
+    }
+
+    val orig = editor.keyBinding.onCommandKey.bind(editor.keyBinding)
+
+    editor.on("click", () => dom.setTimeout((() => Client.autocompleted.foreach(_.killOrUpdate())), 1))
+    editor.keyBinding.onCommandKey = {(e: js.Dynamic, hashId: js.Dynamic, keyCode: js.Number) =>
+
+      (Client.autocompleted, keyCode) match{
+        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.escape =>
+          a.clearAll()
+          Client.autocompleted = None
+        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.down =>
+          a.clearAll()
+          a.selected = a.options((a.scroll + 1) % a.options.length)
+          a.renderAll()
+        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.up =>
+          a.clearAll()
+          a.selected = a.options((a.scroll - 1 + a.options.length) % a.options.length)
+          a.renderAll()
+        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.enter =>
+          a.clear()
+          Client.autocompleted = None
+          e.preventDefault()
+        case (Some(a), x)
+          if Completer.validIdentChars(js.String.fromCharCode(x.toInt).toString()(0)) =>
+
+          val (row, column) = Editor.rowCol
+
+          Editor.aceDoc.removeInLine(row, column, column + 1)
+          dom.setTimeout(
+            () => {
+              a.clearAll()
+              a.renderAll()
+            },
+            0
+          )
+
+        case (Some(a), x) =>
+          orig(e, hashId, keyCode)
+          a.killOrUpdate()
+        case _ =>
+          orig(e, hashId, keyCode)
+      }
+    }
+
+    editor.getSession().setTabSize(2)
+    js.Dynamic.global.ed = editor
+    editor
+  }
+}
+
 object Client{
 
   lazy val sandbox = js.Dynamic.global.sandbox.asInstanceOf[dom.HTMLDivElement]
@@ -65,65 +153,8 @@ object Client{
   dom.document.body.innerHTML = Page.body.mkString
 
   val cloned = output.innerHTML
-  lazy val aceDoc = editor.getSession().getDocument()
-
-
 
   var autocompleted: Option[Completer] = None
-
-  lazy val editor: js.Dynamic = {
-    val editor = global.ace.edit("editor")
-    editor.setTheme("ace/theme/twilight")
-    editor.getSession().setMode("ace/mode/scala")
-    editor.renderer.setShowGutter(false)
-
-    val bindings = Seq(
-      ("Compile", "Enter", compile _),
-      ("Save", "S", save _),
-      ("Complete", "`", complete _)
-    )
-
-    for ((name, key, func) <- bindings){
-      editor.commands.addCommand(lit(
-        name = name,
-        bindKey = lit(
-          win = "Ctrl-" + key,
-          mac = "Command-" + key,
-          sender = "editor|cli"
-        ),
-        exec = func: js.Function0[_]
-      ))
-    }
-
-    val orig = editor.keyBinding.onCommandKey.bind(editor.keyBinding)
-    editor.keyBinding.onCommandKey = {(e: js.Dynamic, hashId: js.Dynamic, keyCode: js.Number) =>
-      dom.setTimeout((() => autocompleted.foreach(_.calc())): js.Function0[Unit], 10)
-      (autocompleted, keyCode) match{
-        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.escape =>
-          a.clear()
-          autocompleted = None
-        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.down =>
-          a.clear()
-          a.scroll += 1
-          a.render()
-        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.up =>
-          a.clear()
-          a.scroll -= 1
-          a.render()
-        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.enter =>
-          a.clear()
-          a.renderSelected()
-          autocompleted = None
-          e.preventDefault()
-        case _ =>
-          orig(e, hashId, keyCode)
-      }
-    }: js.Function3[js.Dynamic, js.Dynamic, js.Number, _]
-
-    editor.getSession().setTabSize(2)
-    js.Dynamic.global.ed = editor
-    editor
-  }
 
   def clear() = {
     for(i <- 0 until 1000){
@@ -186,7 +217,7 @@ object Client{
     val firstFile = allFiles(js.Object.keys(allFiles)(0).toString)
     val content = (if (!mainFile.isInstanceOf[js.Undefined]) mainFile else firstFile).selectDynamic("content").toString
 
-    editor.getSession().setValue(content)
+    Editor.sess.setValue(content)
     saved(content) = gistId
     compile()
   }.recover{ case e =>
@@ -196,7 +227,7 @@ object Client{
 
   def compile(): Future[Unit] = async {
 
-    val code = editor.getSession().getValue().asInstanceOf[String]
+    val code = Editor.sess.getValue().asInstanceOf[String]
     log("Compiling... ")
     val res = await(Ajax.post("/compile", code))
 
@@ -221,32 +252,37 @@ object Client{
     if (autocompleted == None){
       logln("Completing...")
       val Seq(row, column) = Seq(
-        editor.getCursorPosition().row,
-        editor.getCursorPosition().column
+        Editor.editor.getCursorPosition().row,
+        Editor.editor.getCursorPosition().column
       ).map(_.asInstanceOf[js.Number].toInt)
-      val line = aceDoc.getLine(row).asInstanceOf[js.String]
-      val code = editor.getSession().getValue().asInstanceOf[String]
+      val line = Editor.aceDoc.getLine(row).asInstanceOf[js.String]
+      val code = Editor.sess.getValue().asInstanceOf[String]
       val intOffset = code.split("\n").take(row).map(_.length + 1).sum + column
       val xhr = await(Ajax.post(
         "/complete/" + intOffset,
         code.take(intOffset) + code.drop(intOffset)
       ))
       val result = js.JSON.parse(xhr.responseText).asInstanceOf[js.Array[String]]
+      val identifier = line.substring(
+        Completer.startColumn(line, column),
+        Completer.endColumn(line, column)
+      )
+      println(s"::::: $row $column ${Completer.endColumn(line, column)}")
+      Editor.aceDoc.removeInLine(row, column, Completer.endColumn(line, column))
       val newAutocompleted = new Completer(
+        result.toList.find(_.toLowerCase().startsWith(identifier.toLowerCase())).getOrElse(result(0)),
         row,
         Completer.startColumn(line, column),
-        aceDoc,
-        editor,
         result.toList,
         () => autocompleted = None
       )
       autocompleted = Some(newAutocompleted)
-      newAutocompleted.render()
+      newAutocompleted.renderAll()
     }
   }
   def save(): Unit = async{
     await(compile())
-    val code = editor.getSession().getValue().asInstanceOf[String]
+    val code = Editor.sess.getValue().asInstanceOf[String]
     val resultId = saved.lift(code) match{
       case Some(id) => id
       case None =>
