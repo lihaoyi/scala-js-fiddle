@@ -19,7 +19,7 @@ object Page{
       div(
         id:="output",
         color:="lightgrey",
-        padding:="25px",
+        paddingLeft:="2px",
         boxSizing:="border-box"
       )
     )
