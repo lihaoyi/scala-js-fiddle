@@ -1,10 +1,6 @@
 package fiddle
-
-import org.scalajs.dom
-import scala.scalajs.js
+import rx._
 import scala.scalajs.js.Dynamic.{literal => lit, _}
-import scala.async.Async._
-import collection.mutable
 object Completer {
   val validIdentChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_".toSet
   def startColumn(line: String, column: Int) = {
@@ -14,7 +10,7 @@ object Completer {
     column + line.drop(column).takeWhile(validIdentChars).length
   }
 }
-class Completer(var selected: String,
+class Completer(val selected: Var[String],
                 row: Int,
                 column: Int,
                 allOptions: List[String],
@@ -22,10 +18,12 @@ class Completer(var selected: String,
                 height: Int = 5){
 
 
-  def scroll = options.indexWhere(_.toLowerCase().startsWith(selected.toLowerCase()))
+  lazy val scroll = Rx{
+    options().indexWhere(_.toLowerCase().startsWith(selected().toLowerCase()))
+  }
 
-  def options = {
-    val (_, newColumn) = Editor.rowCol
+  lazy val options = Var{
+    val (_, newColumn) = Editor.rowCol()
 
     allOptions.filter(_.startsWith(Editor.line.substring(column, newColumn)))
   }
@@ -40,14 +38,15 @@ class Completer(var selected: String,
     render()
     renderSelected()
   }
+
   def render(): Unit = {
 
-    val start = modulo(scroll + 1, options.length)
-    val end = modulo(scroll + height, options.length)
+    val start = modulo(scroll() + 1, options().length)
+    val end = modulo(scroll() + height, options().length)
 
     val sliced =
-      if(end > start) options.slice(start, end)
-      else options.drop(start) ++ options.take(end)
+      if(end > start) options().slice(start, end)
+      else options().drop(start) ++ options().take(end)
 
     Editor.sess.insert(
       pos,
@@ -57,13 +56,13 @@ class Completer(var selected: String,
     )
   }
   def renderSelected(): Unit = {
-    val (newRow, newColumn) = Editor.rowCol
+    val (newRow, newColumn) = Editor.rowCol()
 
-    if (!options.isEmpty){
-      println("renderSelected " + row + " " + column + " " + options(modulo(scroll, options.length)).drop(newColumn - column))
+    if (!options().isEmpty){
+
       Editor.aceDoc.insertInLine(
         lit(row=row, column=newColumn),
-        options(modulo(scroll, options.length)).drop(newColumn - column)
+        options()(modulo(scroll(), options().length)).drop(newColumn - column)
       )
     }
 
@@ -80,15 +79,14 @@ class Completer(var selected: String,
   }
 
   def clearSelected(): Unit = {
-    val (_, newColumn) = Editor.rowCol
-    if (!options.isEmpty){
-      println(s"clear Selected $newColumn ${column + options(modulo(scroll, options.length)).length}" )
-      Editor.aceDoc.removeInLine(row, newColumn, column + options(modulo(scroll, options.length)).length)
+    val (_, newColumn) = Editor.rowCol()
+    if (!options().isEmpty){
+      Editor.aceDoc.removeInLine(row, newColumn, column + options()(modulo(scroll(), options().length)).length)
     }
   }
 
   def killOrUpdate(): Unit = {
-    val (newRow, newColumn) = Editor.rowCol
+    val (newRow, newColumn) = Editor.rowCol()
 
     clearAll()
     if (newRow != row || Completer.startColumn(Editor.line, newColumn) != column) {

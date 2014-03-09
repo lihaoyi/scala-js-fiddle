@@ -33,7 +33,7 @@ object Compiler{
   }
   import scala.async.Async.{async, await}
 
-  def autocomplete(code: String, pos: Int): Future[List[String]] = async {
+  def autocomplete(code: String, flag: String, pos: Int): Future[List[String]] = async {
     val vd = new VirtualDirectory("(memory)", None)
     // global can be reused, just create new runs for new compiler invocations
     val compiler = initGlobal(
@@ -47,12 +47,10 @@ object Compiler{
 
 
     await(toFuture[Unit](compiler.askReload(List(file), _)))
-    val maybeMems1 = await(toFuture[List[compiler.Member]](compiler.askTypeCompletion(position, _)))
-    val maybeMems2 = await(toFuture[List[compiler.Member]](compiler.askScopeCompletion(position, _)))
-    val maybeMems = maybeMems1 ++ maybeMems2
-    println(compiler.ask(() =>
-      maybeMems.map(_.sym.pos)
-    ))
+    val maybeMems = flag match{
+      case "scope" => await(toFuture[List[compiler.Member]](compiler.askScopeCompletion(position, _)))
+      case "member" => await(toFuture[List[compiler.Member]](compiler.askTypeCompletion(position, _)))
+    }
 
     val res = compiler.ask(() =>
       maybeMems.map(x => x.sym.decodedName)

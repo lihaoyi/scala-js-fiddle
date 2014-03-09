@@ -64,7 +64,7 @@ object Main extends SimpleRoutingApp {
           path("compile"){
             compileStuff
           } ~
-          path("complete" / IntNumber){
+          path("complete" / Segment / IntNumber){
             completeStuff
           }
         }
@@ -72,9 +72,9 @@ object Main extends SimpleRoutingApp {
     }
 
   }
-  def completeStuff(offset: Int)(ctx: RequestContext): Unit = {
+  def completeStuff(flag: String, offset: Int)(ctx: RequestContext): Unit = {
 //    setSecurityManager
-    Compiler.autocomplete(ctx.request.entity.asString, offset).foreach { res: List[String] =>
+    Compiler.autocomplete(ctx.request.entity.asString, flag, offset).foreach { res: List[String] =>
       val response = res.toJson.toString
       println(s"got autocomplete: sending $response")
       ctx.responder ! HttpResponse(

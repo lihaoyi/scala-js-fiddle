@@ -8,7 +8,7 @@ import scala.concurrent.{Promise, Future}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.async.Async.{async, await}
 import scalatags.all._
-
+import rx._
 object Page{
 
   def body = Seq(
@@ -52,94 +52,7 @@ object Output{
   }
 }
 
-object Editor{
-  lazy val aceDoc = editor.getSession().getDocument()
-  lazy val sess = editor.getSession()
 
-  def rowCol: (Int, Int) = {
-    val Seq(newRow, newColumn) = Seq(
-      editor.getCursorPosition().row,
-      editor.getCursorPosition().column
-    ).map(_.asInstanceOf[js.Number].toInt)
-    (newRow, newColumn)
-  }
-
-  def line = Editor.aceDoc
-                   .getLine(rowCol._1)
-                   .asInstanceOf[js.String]
-
-  lazy val editor: js.Dynamic = {
-    val editor = global.ace.edit("editor")
-    editor.setTheme("ace/theme/twilight")
-    editor.getSession().setMode("ace/mode/scala")
-    editor.renderer.setShowGutter(false)
-
-    val bindings = Seq(
-      ("Compile", "Enter", Client.compile _),
-      ("Save", "S", Client.save _),
-      ("Complete", "`", Client.complete _)
-    )
-
-    for ((name, key, func) <- bindings){
-      editor.commands.addCommand(lit(
-        name = name,
-        bindKey = lit(
-          win = "Ctrl-" + key,
-          mac = "Command-" + key,
-          sender = "editor|cli"
-        ),
-        exec = func
-      ))
-    }
-
-    val orig = editor.keyBinding.onCommandKey.bind(editor.keyBinding)
-
-    editor.on("click", () => dom.setTimeout((() => Client.autocompleted.foreach(_.killOrUpdate())), 1))
-    editor.keyBinding.onCommandKey = {(e: js.Dynamic, hashId: js.Dynamic, keyCode: js.Number) =>
-
-      (Client.autocompleted, keyCode) match{
-        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.escape =>
-          a.clearAll()
-          Client.autocompleted = None
-        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.down =>
-          a.clearAll()
-          a.selected = a.options((a.scroll + 1) % a.options.length)
-          a.renderAll()
-        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.up =>
-          a.clearAll()
-          a.selected = a.options((a.scroll - 1 + a.options.length) % a.options.length)
-          a.renderAll()
-        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.enter =>
-          a.clear()
-          Client.autocompleted = None
-          e.preventDefault()
-        case (Some(a), x)
-          if Completer.validIdentChars(js.String.fromCharCode(x.toInt).toString()(0)) =>
-
-          val (row, column) = Editor.rowCol
-
-          Editor.aceDoc.removeInLine(row, column, column + 1)
-          dom.setTimeout(
-            () => {
-              a.clearAll()
-              a.renderAll()
-            },
-            0
-          )
-
-        case (Some(a), x) =>
-          orig(e, hashId, keyCode)
-          a.killOrUpdate()
-        case _ =>
-          orig(e, hashId, keyCode)
-      }
-    }
-
-    editor.getSession().setTabSize(2)
-    js.Dynamic.global.ed = editor
-    editor
-  }
-}
 
 object Client{
 
@@ -251,26 +164,26 @@ object Client{
   def complete() = async {
     if (autocompleted == None){
       logln("Completing...")
-      val Seq(row, column) = Seq(
-        Editor.editor.getCursorPosition().row,
-        Editor.editor.getCursorPosition().column
-      ).map(_.asInstanceOf[js.Number].toInt)
+      val (row, column) = Editor.rowCol()
+
       val line = Editor.aceDoc.getLine(row).asInstanceOf[js.String]
       val code = Editor.sess.getValue().asInstanceOf[String]
       val intOffset = code.split("\n").take(row).map(_.length + 1).sum + column
+
+      val flag = if(code.take(intOffset).endsWith(".")) "member" else "scope"
       val xhr = await(Ajax.post(
-        "/complete/" + intOffset,
-        code.take(intOffset) + code.drop(intOffset)
+        s"/complete/$flag/$intOffset",
+        code
       ))
       val result = js.JSON.parse(xhr.responseText).asInstanceOf[js.Array[String]]
       val identifier = line.substring(
         Completer.startColumn(line, column),
         Completer.endColumn(line, column)
       )
-      println(s"::::: $row $column ${Completer.endColumn(line, column)}")
+
       Editor.aceDoc.removeInLine(row, column, Completer.endColumn(line, column))
       val newAutocompleted = new Completer(
-        result.toList.find(_.toLowerCase().startsWith(identifier.toLowerCase())).getOrElse(result(0)),
+        Var(result.toList.find(_.toLowerCase().startsWith(identifier.toLowerCase())).getOrElse(result(0))),
         row,
         Completer.startColumn(line, column),
         result.toList,
