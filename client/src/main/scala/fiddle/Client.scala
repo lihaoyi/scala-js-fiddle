@@ -43,16 +43,14 @@ object Output{
     Client.output.innerHTML = outputted.toString()
     Client.output.scrollTop = Client.output.scrollHeight - Client.output.clientHeight
   }
-  def clear(){
+  def clear() = {
     outputted = div()
     Client.output.innerHTML = outputted.toString()
   }
-  def scroll(px: Int){
+  def scroll(px: Int) = {
     Client.output.scrollTop = Client.output.scrollTop + px
   }
 }
-
-
 
 object Client{
 
@@ -82,7 +80,7 @@ object Client{
   val fiddleUrl = "http://www.scala-js-fiddle.com"
   val saved = mutable.Map.empty[String, String]
   var logged = div(
-    div("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-S"), " to save to a Gist"),
+    div("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-`"), " for autocomplete."),
     div("- Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
   )
   def logln(s: Modifier*): Unit = {

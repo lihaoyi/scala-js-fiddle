@@ -19,7 +19,7 @@ class Completer(val selected: Var[String],
 
 
   lazy val scroll = Rx{
-    options().indexWhere(_.toLowerCase().startsWith(selected().toLowerCase()))
+    options().indexWhere(_.toLowerCase().==(selected().toLowerCase()))
   }
 
   lazy val options = Rx{

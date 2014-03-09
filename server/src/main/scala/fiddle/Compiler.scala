@@ -39,7 +39,7 @@ object Compiler{
     val compiler = initGlobal(
       (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter),
       vd,
-      s => println(":::::::::: " + s)
+      s => ()
     )
 
     val file      = new BatchSourceFile(makeFile(prelude.getBytes ++ code.getBytes), prelude + code)
@@ -52,18 +52,11 @@ object Compiler{
       case "member" => await(toFuture[List[compiler.Member]](compiler.askTypeCompletion(position, _)))
     }
 
-    val res = compiler.ask(() =>
+    compiler.ask(() =>
       maybeMems.map(x => x.sym.decodedName)
                .filter(x => !blacklist.contains(x))
                .distinct
     )
-    println("autocomplete res " + res)
-    res
-
-  } recover{ case e =>
-    println("autocomplete failed")
-    println(e)
-    Nil
   }
 
   def makeFile(src: Array[Byte]) = {
@@ -77,14 +70,9 @@ object Compiler{
     lazy val settings = new Settings
     val loader = getClass.getClassLoader.asInstanceOf[URLClassLoader]
     val entries = loader.getURLs.map(_.getPath) :+ "target/scala-2.10/classes/classes"
-    println("Main.initGlobal.entries")
-    println(entries.toSeq)
-    println(new File("").getAbsolutePath)
+
     settings.outputDirs.setSingleOutput(vd)
     settings.classpath.value            = ClassPath.join(entries: _*)
-
-    settings.YpresentationVerbose.value = true
-    settings.YpresentationDebug.value   = true
 
     val writer = new Writer{
       var inner = ByteString()
@@ -114,8 +102,6 @@ object Compiler{
     )
     val run = new compiler.Run()
     run.compileFiles(List(singleFile))
-
-    vd.iterator.filter(_.name.endsWith(".js")).foreach(println)
 
     if (vd.iterator.isEmpty) None
     else Some(

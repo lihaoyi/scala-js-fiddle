@@ -96,9 +96,7 @@ object Editor{
           orig(e, hashId, keyCode)
           dom.setTimeout(
             () => {
-              println("::: " + rowCol())
               rowCol() = getRowCol
-              println("::: " + rowCol())
               a.killOrUpdate()
             },
             0
