@@ -27,14 +27,13 @@ object Compiler{
       |import fiddle.Page.{red, green, blue}
     """.stripMargin
 
-  def toFuture[T](func: Response[T] => Unit): Future[Either[T, Throwable]] = {
+  def toFuture[T](func: Response[T] => Unit): Future[T] = {
     val r = new Response[T]
-    Future { func(r) ; r.get }
+    Future { func(r) ; r.get.left.get }
   }
+  import scala.async.Async.{async, await}
 
-
-
-  def autocomplete(code: String, pos: Int): Future[List[String]] = {
+  def autocomplete(code: String, pos: Int): Future[List[String]] = async {
     val vd = new VirtualDirectory("(memory)", None)
     // global can be reused, just create new runs for new compiler invocations
     val compiler = initGlobal(
@@ -42,27 +41,31 @@ object Compiler{
       vd,
       s => println(":::::::::: " + s)
     )
-    println("autocomplete")
-    println(code.take(pos))
-    println("-----------------------------")
-    println(code.drop(pos))
-    println("-----------------------------")
 
     val file      = new BatchSourceFile(makeFile(prelude.getBytes ++ code.getBytes), prelude + code)
     val position  = new OffsetPosition(file, pos + prelude.length)
 
-    for (
-      _         <- toFuture[Unit](compiler.askReload(List(file), _));
-      maybeMems <- toFuture[List[compiler.Member]](compiler.askTypeCompletion(position, _))
-    ) yield {
-      val res = maybeMems.left
-                         .get
-                         .map(_.sym.decodedName)
-                         .filter(x => !blacklist.contains(x))
-                         .distinct
-      println("autocomplete res " + res)
-      res
-    }
+
+    await(toFuture[Unit](compiler.askReload(List(file), _)))
+    val maybeMems1 = await(toFuture[List[compiler.Member]](compiler.askTypeCompletion(position, _)))
+    val maybeMems2 = await(toFuture[List[compiler.Member]](compiler.askScopeCompletion(position, _)))
+    val maybeMems = maybeMems1 ++ maybeMems2
+    println(compiler.ask(() =>
+      maybeMems.map(_.sym.pos)
+    ))
+
+    val res = compiler.ask(() =>
+      maybeMems.map(x => x.sym.decodedName)
+               .filter(x => !blacklist.contains(x))
+               .distinct
+    )
+    println("autocomplete res " + res)
+    res
+
+  } recover{ case e =>
+    println("autocomplete failed")
+    println(e)
+    Nil
   }
 
   def makeFile(src: Array[Byte]) = {

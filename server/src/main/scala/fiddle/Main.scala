@@ -75,7 +75,7 @@ object Main extends SimpleRoutingApp {
   def completeStuff(offset: Int)(ctx: RequestContext): Unit = {
 //    setSecurityManager
     Compiler.autocomplete(ctx.request.entity.asString, offset).foreach { res: List[String] =>
-      val response = JsArray(res.map(_.toJson):_*).toString
+      val response = res.toJson.toString
       println(s"got autocomplete: sending $response")
       ctx.responder ! HttpResponse(
         entity=response,

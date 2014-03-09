@@ -25,7 +25,8 @@ libraryDependencies ++= Seq(
   "org.scala-lang.modules.scalajs" %% "scalajs-jquery" % "0.1-SNAPSHOT",
   "com.scalatags" % "scalatags_2.10" % "0.2.3-JS",
   "com.scalarx" % "scalarx_2.10" % "0.2.2-JS",
-  "io.spray" %%  "spray-json" % "1.2.5"
+  "io.spray" %%  "spray-json" % "1.2.5",
+  "org.scala-lang.modules" %% "scala-async" % "0.9.0-M4"
 )
 
 

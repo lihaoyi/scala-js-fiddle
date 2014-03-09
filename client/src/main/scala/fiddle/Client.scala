@@ -65,70 +65,11 @@ object Client{
   dom.document.body.innerHTML = Page.body.mkString
 
   val cloned = output.innerHTML
+  lazy val aceDoc = editor.getSession().getDocument()
 
-  class CompleteState(val row: Int,
-                      val column: Int,
-                      val prefix: String,
-                      val suffix: String,
-                      val allOptions: Seq[String],
-                      var scroll: Int = 0,
-                      val height: Int = 5){
 
-    def options = allOptions.filter(_.startsWith(namePrefix))
-    val pos = lit(row=row+1, column=0)
 
-    val validChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_".toSet
-    val namePrefix = prefix.reverse
-                           .takeWhile(validChars)
-                           .reverse
-
-    println("CompleteState " + namePrefix)
-    dom.console.log(pos)
-    def modulo(a: Int, b: Int) = (a % b + b) % b
-    def render(): Unit = {
-
-      val start = modulo(scroll + 1, options.length)
-      val end = modulo(scroll + height, options.length)
-
-      val sliced =
-        if(end > start) options.slice(start, end)
-        else options.drop(start) ++ options.take(end)
-
-      renderSelected()
-
-      editor.getSession().insert(
-        pos,
-        sliced.padTo(height, "")
-              .map(" " * (column - namePrefix.length) + _ + "\n")
-              .mkString
-      )
-    }
-    def renderSelected(): Unit = {
-      editor.getSession()
-            .getDocument()
-            .insertInLine(lit(row=row, column=column + namePrefix.length), options(modulo(scroll, options.length)).drop(namePrefix.length))
-    }
-    def clear(): Unit = {
-      println("CLEAR CLEAR CLEAR CLEAR CLEAR CLEAR CLEAR CLEAR CLEAR CLEAR")
-      println(options)
-      println(modulo(scroll, options.length))
-
-      editor.getSession()
-            .getDocument()
-            .removeInLine(row, column, column + options(modulo(scroll, options.length)).length)
-
-      editor.getSession()
-            .getDocument()
-            .removeLines(row+1, height + row)
-    }
-    def update(): Unit = {
-
-      clear()
-      render()
-    }
-  }
-
-  var autocompleted: Option[CompleteState] = None
+  var autocompleted: Option[Completer] = None
 
   lazy val editor: js.Dynamic = {
     val editor = global.ace.edit("editor")
@@ -156,7 +97,7 @@ object Client{
 
     val orig = editor.keyBinding.onCommandKey.bind(editor.keyBinding)
     editor.keyBinding.onCommandKey = {(e: js.Dynamic, hashId: js.Dynamic, keyCode: js.Number) =>
-      println("Intercept! " + keyCode)
+      dom.setTimeout((() => autocompleted.foreach(_.calc())): js.Function0[Unit], 10)
       (autocompleted, keyCode) match{
         case (Some(a), x) if x.toInt == dom.extensions.KeyCode.escape =>
           a.clear()
@@ -278,29 +219,29 @@ object Client{
 
   def complete() = async {
     if (autocompleted == None){
+      logln("Completing...")
       val Seq(row, column) = Seq(
         editor.getCursorPosition().row,
         editor.getCursorPosition().column
       ).map(_.asInstanceOf[js.Number].toInt)
-
+      val line = aceDoc.getLine(row).asInstanceOf[js.String]
       val code = editor.getSession().getValue().asInstanceOf[String]
       val intOffset = code.split("\n").take(row).map(_.length + 1).sum + column
-
-      logln("Completing...")
-
-      val xhr = await(Ajax.post("/complete/" + intOffset, code))
+      val xhr = await(Ajax.post(
+        "/complete/" + intOffset,
+        code.take(intOffset) + code.drop(intOffset)
+      ))
       val result = js.JSON.parse(xhr.responseText).asInstanceOf[js.Array[String]]
-      val line = editor.getSession().getDocument().getLine(row).asInstanceOf[js.String]
-      if (result.toSeq.length > 0){
-        autocompleted = Some(new CompleteState(
-          row,
-          column,
-          line.take(column),
-          line.drop(column),
-          result.toSeq
-        ))
-        autocompleted.get.render()
-      }
+      val newAutocompleted = new Completer(
+        row,
+        Completer.startColumn(line, column),
+        aceDoc,
+        editor,
+        result.toList,
+        () => autocompleted = None
+      )
+      autocompleted = Some(newAutocompleted)
+      newAutocompleted.render()
     }
   }
   def save(): Unit = async{
