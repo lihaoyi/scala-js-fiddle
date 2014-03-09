@@ -21,8 +21,8 @@ object Editor{
   }
 
   def line = Editor.aceDoc
-    .getLine(rowCol()._1)
-    .asInstanceOf[js.String]
+                   .getLine(rowCol()._1)
+                   .asInstanceOf[js.String]
 
   lazy val editor: js.Dynamic = {
     val editor = global.ace.edit("editor")
@@ -63,6 +63,7 @@ object Editor{
         case (Some(a), x) if x.toInt == dom.extensions.KeyCode.escape =>
           a.clearAll()
           Client.autocompleted = None
+          a.options.kill()
         case (Some(a), x) if x.toInt == dom.extensions.KeyCode.down =>
           a.clearAll()
           a.selected() = a.options()((a.scroll() + 1) % a.options().length)
@@ -74,12 +75,14 @@ object Editor{
         case (Some(a), x) if x.toInt == dom.extensions.KeyCode.enter =>
           a.clear()
           Client.autocompleted = None
+          a.options.kill()
           e.preventDefault()
         case (Some(a), x)
           if Completer.validIdentChars(js.String.fromCharCode(x.toInt).toString()(0)) =>
           val (row, column) = Editor.rowCol()
 
           Editor.aceDoc.removeInLine(row, column, column + 1)
+
           dom.setTimeout(
             () => {
               rowCol() = getRowCol
@@ -93,7 +96,9 @@ object Editor{
           orig(e, hashId, keyCode)
           dom.setTimeout(
             () => {
+              println("::: " + rowCol())
               rowCol() = getRowCol
+              println("::: " + rowCol())
               a.killOrUpdate()
             },
             0

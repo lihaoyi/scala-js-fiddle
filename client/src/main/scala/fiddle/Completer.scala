@@ -22,7 +22,7 @@ class Completer(val selected: Var[String],
     options().indexWhere(_.toLowerCase().startsWith(selected().toLowerCase()))
   }
 
-  lazy val options = Var{
+  lazy val options = Rx{
     val (_, newColumn) = Editor.rowCol()
 
     allOptions.filter(_.startsWith(Editor.line.substring(column, newColumn)))
@@ -81,7 +81,7 @@ class Completer(val selected: Var[String],
   def clearSelected(): Unit = {
     val (_, newColumn) = Editor.rowCol()
     if (!options().isEmpty){
-      Editor.aceDoc.removeInLine(row, newColumn, column + options()(modulo(scroll(), options().length)).length)
+      Editor.aceDoc.removeInLine(row, newColumn, Completer.endColumn(Editor.line, newColumn))
     }
   }
 
