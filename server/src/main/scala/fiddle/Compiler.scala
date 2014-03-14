@@ -45,7 +45,6 @@ object Compiler{
     val file      = new BatchSourceFile(makeFile(prelude.getBytes ++ code.getBytes), prelude + code)
     val position  = new OffsetPosition(file, pos + prelude.length)
 
-
     await(toFuture[Unit](compiler.askReload(List(file), _)))
     val maybeMems = flag match{
       case "scope" => await(toFuture[List[compiler.Member]](compiler.askScopeCompletion(position, _)))
