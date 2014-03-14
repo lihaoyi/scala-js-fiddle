@@ -11,7 +11,7 @@ resolvers += Resolver.url("scala-js-snapshots",
 // for com.typesafe.play % play-json_2.10 % 2.2.0-RC1 (needed for workbench)
 resolvers += "Typesafe Repo" at "http://repo.typesafe.com/typesafe/releases/"
 
-addSbtPlugin("org.scala-lang.modules.scalajs" % "scalajs-sbt-plugin" % "0.3")
+addSbtPlugin("org.scala-lang.modules.scalajs" % "scalajs-sbt-plugin" % "0.4.0")
 
 addSbtPlugin("com.lihaoyi" % "workbench" % "0.1.1")
 

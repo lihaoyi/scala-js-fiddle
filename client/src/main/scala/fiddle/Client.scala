@@ -9,6 +9,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.async.Async.{async, await}
 import scalatags.all._
 import rx._
+import js.annotation.JSExport
 object Page{
 
   def body = Seq(
@@ -51,7 +52,7 @@ object Output{
     Client.output.scrollTop = Client.output.scrollTop + px
   }
 }
-
+@JSExport
 object Client{
 
   lazy val sandbox = js.Dynamic.global.sandbox.asInstanceOf[dom.HTMLDivElement]
@@ -93,7 +94,7 @@ object Client{
     logspam.scrollTop = logspam.scrollHeight - logspam.clientHeight
   }
   val (defaultGistId, defaultFile) = ("9405209", "LandingPage.scala")
-
+  @JSExport
   def main(args: Array[String]): Unit = {
     clear()
     if (dom.document.location.pathname == "/") load(defaultGistId, Some(defaultFile))

@@ -12,19 +12,19 @@ resolvers += Resolver.url("scala-js-snapshots",
 
 
 libraryDependencies ++= Seq(
-  "com.lihaoyi.utest" % "utest_2.10" % "0.1.1" % "test",
+  "com.lihaoyi.utest" % "utest_2.10" % "0.1.2" % "test",
   "org.scala-lang" % "scala-compiler" % "2.10.3",
   "com.typesafe.akka" %% "akka-actor" % "2.3.0",
   "io.spray" % "spray-can" % "1.3.0",
   "io.spray" % "spray-caching" % "1.3.0",
   "io.spray" % "spray-httpx" % "1.3.0",
   "io.spray" % "spray-routing" % "1.3.0",
-  "org.scala-lang.modules.scalajs" %% "scalajs-compiler" % "0.4-SNAPSHOT",
-  "org.scala-lang.modules.scalajs" %% "scalajs-library" % "0.4-SNAPSHOT",
-  "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.3-SNAPSHOT",
-  "org.scala-lang.modules.scalajs" %% "scalajs-jquery" % "0.1-SNAPSHOT",
-  "com.scalatags" % "scalatags_2.10" % "0.2.3-JS",
-  "com.scalarx" % "scalarx_2.10" % "0.2.2-JS",
+  "org.scala-lang.modules.scalajs" %% "scalajs-compiler" % "0.4.0",
+  "org.scala-lang.modules.scalajs" %% "scalajs-library" % "0.4.0",
+  "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.3",
+  "org.scala-lang.modules.scalajs" %% "scalajs-jquery" % "0.3",
+  "com.scalatags" % "scalatags_2.10" % "0.2.4-JS",
+  "com.scalarx" % "scalarx_2.10" % "0.2.3-JS",
   "io.spray" %%  "spray-json" % "1.2.5",
   "org.scala-lang.modules" %% "scala-async" % "0.9.0-M4"
 )
