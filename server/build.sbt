@@ -12,7 +12,7 @@ resolvers += Resolver.url("scala-js-snapshots",
 
 
 libraryDependencies ++= Seq(
-  "com.lihaoyi.utest" % "utest_2.10" % "0.1.2" % "test",
+  "com.lihaoyi" % "utest_2.10" % "0.1.2" % "test",
   "org.scala-lang" % "scala-compiler" % "2.10.3",
   "com.typesafe.akka" %% "akka-actor" % "2.3.0",
   "io.spray" % "spray-can" % "1.3.0",
