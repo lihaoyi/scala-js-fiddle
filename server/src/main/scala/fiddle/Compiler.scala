@@ -4,7 +4,7 @@ import scala.tools.nsc.Settings
 import java.net.URLClassLoader
 import scala.reflect.io.{VirtualFile, VirtualDirectory}
 import scala.tools.nsc.util.ClassPath
-import java.io.{File, PrintWriter, Writer}
+import java.io._
 import akka.util.ByteString
 import scala.tools.nsc.reporters.ConsoleReporter
 import scala.tools.nsc.plugins.Plugin
@@ -12,8 +12,39 @@ import scala.concurrent.Future
 
 import scala.reflect.internal.util.{BatchSourceFile, OffsetPosition}
 import scala.tools.nsc.interactive.Response
-
+import scala.scalajs.sbtplugin.FileSystem
+import scala.Some
+import scala.scalajs.sbtplugin.optimizer.ScalaJSOptimizer
+import sbt.{Level, ConsoleOut, ConsoleLogger, Logger}
 object Compiler{
+  class VirtualFilesystem(vd: VirtualDirectory) extends FileSystem{
+    type File = VirtualFile
+
+    def name(file: File): String = ???
+
+    def withName(file: File, newName: String): File = ???
+
+    def exists(file: File): Boolean = ???
+
+    def input(file: File): InputStream = ???
+
+    def output(file: File): OutputStream = ???
+  }
+
+  def opt(vd: VirtualDirectory) = {
+    val l: Logger = new Logger {
+      def log(level: Level.Value, message: => String): Unit = ()
+      def success(message: => String): Unit = ()
+      def trace(t: => Throwable): Unit = ()
+    }
+    new ScalaJSOptimizer(new VirtualFilesystem(vd), l).optimize(
+      ???,
+      ???,
+      ???
+    )
+  }
+
+
   import concurrent.ExecutionContext.Implicits.global
   val blacklist = Seq(
     "<init>"

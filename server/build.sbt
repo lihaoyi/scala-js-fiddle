@@ -26,9 +26,14 @@ libraryDependencies ++= Seq(
   "com.scalatags" % "scalatags_2.10" % "0.2.4-JS",
   "com.scalarx" % "scalarx_2.10" % "0.2.3-JS",
   "io.spray" %%  "spray-json" % "1.2.5",
-  "org.scala-lang.modules" %% "scala-async" % "0.9.0-M4"
+  "org.scala-lang.modules" %% "scala-async" % "0.9.0-M4",
+  "org.scala-sbt" % "sbt" % "0.13.0"
 )
 
+libraryDependencies +=
+  ("org.scala-lang.modules.scalajs" % "scalajs-sbt-plugin" % "0.4.0").extra(
+    "sbtVersion" -> "0.13", "scalaVersion" -> "2.10"
+  )
 
 testFrameworks += new TestFramework("utest.runner.JvmFramework")
 
