@@ -35,6 +35,8 @@
 
 body {
     overflow: hidden;
+    background-color: #222222;
+    color: #eeeeee;
 }
 
 a:link{
