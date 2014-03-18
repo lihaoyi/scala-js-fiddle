@@ -57,7 +57,7 @@ object Main extends SimpleRoutingApp {
                 getFromResourceDirectory("..")
               } ~
               pathPrefix("favicon.ico") {
-                getFromResource("Shield.png")
+                getFromResource("favicon.ico")
               } ~
               getFromResourceDirectory("")
             }
