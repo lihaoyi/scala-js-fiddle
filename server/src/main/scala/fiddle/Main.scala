@@ -28,17 +28,14 @@ object Main extends SimpleRoutingApp {
   implicit val system = ActorSystem()
   implicit val executionContext = system.dispatcher
 
-  /**
-   * Only set this once
-   */  
-  lazy val setSecurityManager = System.setSecurityManager(SecurityManager)
-
   def main(args: Array[String]): Unit = {
+    println("A")
     implicit val Default: CacheKeyer = CacheKeyer {
       case RequestContext(HttpRequest(_, uri, _, entity, _), _, _) => (uri, entity)
     }
+    println("B")
     val simpleCache = routeCache(maxCapacity = 1000)
-
+    println("C")
     startServer("localhost", port = 8080) {
       cache(simpleCache) {
         get {
@@ -77,7 +74,7 @@ object Main extends SimpleRoutingApp {
   }
   def completeStuff(flag: String, offset: Int)(ctx: RequestContext): Unit = {
 //    setSecurityManager
-    Compiler.autocomplete(ctx.request.entity.asString, flag, offset).foreach { res: List[String] =>
+    Compiler.autocomplete(ctx.request.entity.asString, flag, offset, Compiler.validJars).foreach { res: List[String] =>
       val response = res.toJson.toString
       println(s"got autocomplete: sending $response")
       ctx.responder ! HttpResponse(
@@ -93,8 +90,10 @@ object Main extends SimpleRoutingApp {
     val output = mutable.Buffer.empty[String]
 //    setSecurityManager
 
-    val res = Compiler(
-      ctx.request.entity.data.toByteArray,
+
+    val res = Compiler.compile(
+      Compiler.prelude.getBytes ++ ctx.request.entity.data.toByteArray,
+      Compiler.validJars,
       output.append(_)
     )
 
@@ -105,7 +104,11 @@ object Main extends SimpleRoutingApp {
           "logspam" -> output.mkString.toJson
         )
 
-      case Some(code) =>
+      case Some(files) =>
+        val code = Compiler.deadCodeElimination(
+          files.map(f => f.name -> new String(f.toByteArray))
+        )
+
         JsObject(
           "success" -> true.toJson,
           "logspam" -> output.mkString.toJson,
@@ -128,41 +131,5 @@ object Main extends SimpleRoutingApp {
         `Access-Control-Allow-Origin`(spray.http.AllOrigins)
       )
     )
-  }
-}
-
-/**
- * First approximation security manager that allows the good stuff while
- * blocking everything else. Doesn't block things like infinite-looping
- * or infinite-memory, and is probably full of other holes, but at least
- * obvious bad stuff doesn't work.
- */
-object SecurityManager extends java.lang.SecurityManager{
-  override def checkPermission(perm: Permission): Unit = {
-    perm match{
-      case p: FilePermission if p.getActions == "read" =>
-        // Needed for the compiler to read class files
-      case p: PropertyPermission =>
-        // Needed for the filesystem operations to work properly
-      case p: ReflectPermission if p.getName == "suppressAccessChecks" =>
-        // Needed for scalac to load data from classpath
-      case p: SocketPermission if p.getActions == "accept,resolve" =>
-        // Needed to continue accepting incoming HTTP requests
-      case p: RuntimePermission
-        if p.getName == "setContextClassLoader"
-        || p.getName == "getClassLoader"
-        || p.getName == "getenv.*"
-        || p.getName == "accessDeclaredMembers" // needed to start htreads, for some reason
-        || p.getName == "getenv.SOURCEPATH" =>
-
-      case _ =>
-        throw new AccessControlException(perm.toString)
-    }
-  }
-  override def checkAccess(g: Thread) = {
-    if (g.getName != "system") super.checkAccess(g)
-  }
-  override def checkAccess(g: ThreadGroup) = {
-    if (g.getName != "SIGTERM handler") super.checkAccess(g)
   }
 }

@@ -2,7 +2,7 @@ package fiddle
 
 import scala.tools.nsc.Settings
 import java.net.URLClassLoader
-import scala.reflect.io.{VirtualFile, VirtualDirectory}
+import scala.reflect.io
 import scala.tools.nsc.util.ClassPath
 import java.io._
 import akka.util.ByteString
@@ -12,38 +12,20 @@ import scala.concurrent.Future
 
 import scala.reflect.internal.util.{BatchSourceFile, OffsetPosition}
 import scala.tools.nsc.interactive.Response
-import scala.scalajs.sbtplugin.FileSystem
-import scala.Some
-import scala.scalajs.sbtplugin.optimizer.ScalaJSOptimizer
-import sbt.{Level, ConsoleOut, ConsoleLogger, Logger}
+import java.util.zip.ZipInputStream
+import scala.io.Source
+import scala.scalajs.tools.optimizer.{ScalaJSClosureOptimizer, ScalaJSOptimizer}
+import scala.scalajs.tools.io.{VirtualScalaJSClassfile, VirtualFile, VirtualJSFile}
+import scala.scalajs.tools.logging.Level
+
 object Compiler{
-  class VirtualFilesystem(vd: VirtualDirectory) extends FileSystem{
-    type File = VirtualFile
 
-    def name(file: File): String = ???
-
-    def withName(file: File, newName: String): File = ???
-
-    def exists(file: File): Boolean = ???
-
-    def input(file: File): InputStream = ???
-
-    def output(file: File): OutputStream = ???
-  }
-
-  def opt(vd: VirtualDirectory) = {
-    val l: Logger = new Logger {
-      def log(level: Level.Value, message: => String): Unit = ()
-      def success(message: => String): Unit = ()
-      def trace(t: => Throwable): Unit = ()
-    }
-    new ScalaJSOptimizer(new VirtualFilesystem(vd), l).optimize(
-      ???,
-      ???,
-      ???
-    )
-  }
-
+  val validJars = Seq(
+    "/classpath/jars/org.scala-lang.modules.scalajs/scalajs-library_2.10/scalajs-library_2.10-0.4.1.jar",
+    "/classpath/jars/org.scala-lang.modules.scalajs/scalajs-dom_2.10/scalajs-dom_2.10-0.3.jar",
+    "/classpath/jars/com.scalatags/scalatags_2.10/scalatags_2.10-0.2.4-JS.jar",
+    "/classpath/jars/com.scalarx/scalarx_2.10/scalarx_2.10-0.2.3-JS.jar"
+  )
 
   import concurrent.ExecutionContext.Implicits.global
   val blacklist = Seq(
@@ -51,11 +33,18 @@ object Compiler{
   )
   val prelude =
     """
-      |import fiddle.{Output => output}
-      |import fiddle.Output.println
-      |import fiddle.Client.canvas
-      |import fiddle.Client.renderer
-      |import fiddle.Page.{red, green, blue}
+      |object Output extends scalajs.js.Object{
+      |  val red: scalatags.HtmlTag = ???
+      |  val blue: scalatags.HtmlTag = ???
+      |  val green: scalatags.HtmlTag = ???
+      |  def println(s: Any*): Unit = ???
+      |  def clear(): Unit = ???
+      |  def scroll(px: Int): Unit = ???
+      |  def output: Output = this
+      |  def renderer: org.scalajs.dom.CanvasRenderingContext2D = ???
+      |  def canvas: org.scalajs.dom.HTMLCanvasElement = ???
+      |}
+      |import Output._
     """.stripMargin
 
   def toFuture[T](func: Response[T] => Unit): Future[T] = {
@@ -64,12 +53,13 @@ object Compiler{
   }
   import scala.async.Async.{async, await}
 
-  def autocomplete(code: String, flag: String, pos: Int): Future[List[String]] = async {
-    val vd = new VirtualDirectory("(memory)", None)
+  def autocomplete(code: String, flag: String, pos: Int, classpath: Seq[String]): Future[List[String]] = async {
+    val vd = new io.VirtualDirectory("(memory)", None)
     // global can be reused, just create new runs for new compiler invocations
     val compiler = initGlobal(
       (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter),
       vd,
+      classpath,
       s => ()
     )
 
@@ -90,19 +80,22 @@ object Compiler{
   }
 
   def makeFile(src: Array[Byte]) = {
-    val singleFile = new VirtualFile("Main.scala")
+    val singleFile = new io.VirtualFile("Main.scala")
     val output = singleFile.output
     output.write(src)
     output.close()
     singleFile
   }
-  def initGlobal[T](make: (Settings, ConsoleReporter) => T, vd: VirtualDirectory, logger: String => Unit) = {
+  def initGlobal[T](make: (Settings, ConsoleReporter) => T,
+                    vd: io.VirtualDirectory,
+                    classpath: Seq[String],
+                    logger: String => Unit) = {
     lazy val settings = new Settings
     val loader = getClass.getClassLoader.asInstanceOf[URLClassLoader]
     val entries = loader.getURLs.map(_.getPath) :+ "target/scala-2.10/classes/classes"
 
     settings.outputDirs.setSingleOutput(vd)
-    settings.classpath.value            = ClassPath.join(entries: _*)
+    settings.classpath.value = ClassPath.join(entries: _*)
 
     val writer = new Writer{
       var inner = ByteString()
@@ -119,28 +112,86 @@ object Compiler{
     make(settings, reporter)
 
   }
-  def apply(src: Array[Byte], logger: String => Unit): Option[String] = {
+  def compile(src: Array[Byte], classpath: Seq[String], logger: String => Unit): Option[Seq[io.AbstractFile]] = {
 
-    val singleFile = makeFile(prelude.getBytes ++ src)
-    val vd = new VirtualDirectory("(memory)", None)
+    val singleFile = makeFile(src)
+    val vd = new io.VirtualDirectory("(memory)", None)
     val compiler = initGlobal(
       (settings, reporter) => new scala.tools.nsc.Global(settings, reporter){
         override lazy val plugins = List[Plugin](new scala.scalajs.compiler.ScalaJSPlugin(this))
       },
       vd,
+      classpath,
       logger
     )
     val run = new compiler.Run()
     run.compileFiles(List(singleFile))
 
     if (vd.iterator.isEmpty) None
-    else Some(
-      vd.iterator
-        .filter(_.name.endsWith(".js"))
-        .map(_.input)
-        .map(io.Source.fromInputStream)
-        .map(_.mkString)
-        .mkString("\n")
+    else Some(vd.iterator.toSeq)
+  }
+  def deadCodeElimination(userFiles: Seq[(String, String)]) = {
+    val libraryFiles = for{
+      name <- Compiler.validJars
+      zipStream = new ZipInputStream(getClass.getResourceAsStream(name))
+      entries = Iterator.continually{
+        for (ent <- Option(zipStream.getNextEntry)) yield {
+          ent.getName -> Source.fromInputStream(zipStream).mkString
+        }
+      }.takeWhile(_ != None).flatten.toMap
+      (name, data) <- entries
+    } yield (name, data)
+    val virtualFiles = libraryFiles ++ userFiles
+    val jsFiles = virtualFiles.filter(_._1.endsWith(".js")).toMap
+    val jsInfoFiles = virtualFiles.filter(_._1.endsWith(".sjsinfo")).toMap
+    val jsKeys = jsFiles.keys.map(_.dropRight(".js".length)).toSet
+    val jsInfoKeys = jsInfoFiles.keys.map(_.dropRight(".sjsinfo".length)).toSet
+    val sharedKeys = jsKeys.intersect(jsInfoKeys)
+    val res = new ScalaJSOptimizer().optimize(
+      ScalaJSOptimizer.Inputs(
+        new VirtualJSFile {
+          def name = "scalajs-corejslib.js"
+          def content = jsFiles("scalajs-corejslib.js")
+        },
+        Seq(
+          new VirtualFile {
+            def name = "javalangString.sjsinfo"
+            def content = jsInfoFiles("javalangString.sjsinfo")
+          },
+          new VirtualFile {
+            def name = "javalangObject.sjsinfo"
+            def content = jsInfoFiles("javalangObject.sjsinfo")
+          }
+        ),
+        for(key <- sharedKeys.toSeq) yield new VirtualScalaJSClassfile {
+          def name = key + ".js"
+          def content = jsFiles(key + ".js")
+          def info = jsInfoFiles(key + ".sjsinfo")
+        }
+      ),
+      ScalaJSOptimizer.OutputConfig("output.js"),
+      Logger
     )
+    res.output.content
+  }
+  def optimize(userFiles: Seq[(String, String)]) = {
+    new ScalaJSClosureOptimizer().optimize(
+      ScalaJSClosureOptimizer.Inputs(
+        Seq(new VirtualJSFile {
+          def name = "Hello.js"
+          def content = Compiler.deadCodeElimination(userFiles)
+        })
+      ),
+      ScalaJSClosureOptimizer.OutputConfig(
+        name = "Hello-opt.js"
+      ),
+      Compiler.Logger
+    ).output.content
+  }
+
+  object Logger extends scala.scalajs.tools.logging.Logger {
+    def log(level: Level, message: => String): Unit = println(message)
+    def success(message: => String): Unit = println(message)
+    def trace(t: => Throwable): Unit = t.printStackTrace()
   }
 }

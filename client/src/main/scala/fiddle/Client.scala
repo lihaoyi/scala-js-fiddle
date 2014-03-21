@@ -25,16 +25,19 @@ object Page{
       )
     )
   )
-
-  val red = span(color:="#ffaaaa")
-  val blue = span(color:="#aaaaff")
-  val green = span(color:="#aaffaa")
 }
 
-import Page.{red, green, blue}
 
+@JSExport
 object Output{
+  @JSExport
+  val red = span(color:="#ffaaaa")
+  @JSExport
+  val blue = span(color:="#aaaaff")
+  @JSExport
+  val green = span(color:="#aaffaa")
   private[this] var outputted = div()
+  @JSExport
   def println(s: Any*) = {
     val modifier = div(s.map{
       case t: Modifier => t
@@ -44,14 +47,21 @@ object Output{
     Client.output.innerHTML = outputted.toString()
     Client.output.scrollTop = Client.output.scrollHeight - Client.output.clientHeight
   }
+  @JSExport
   def clear() = {
     outputted = div()
     Client.output.innerHTML = outputted.toString()
   }
+  @JSExport
   def scroll(px: Int) = {
     Client.output.scrollTop = Client.output.scrollTop + px
   }
+  @JSExport
+  def renderer = Client.renderer
+  @JSExport
+  def canvas = Client.canvas
 }
+import Output.{red, green, blue}
 @JSExport
 object Client{
 
