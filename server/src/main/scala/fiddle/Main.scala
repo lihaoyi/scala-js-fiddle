@@ -29,13 +29,10 @@ object Main extends SimpleRoutingApp {
   implicit val executionContext = system.dispatcher
 
   def main(args: Array[String]): Unit = {
-    println("A")
     implicit val Default: CacheKeyer = CacheKeyer {
       case RequestContext(HttpRequest(_, uri, _, entity, _), _, _) => (uri, entity)
     }
-    println("B")
     val simpleCache = routeCache(maxCapacity = 1000)
-    println("C")
     startServer("localhost", port = 8080) {
       cache(simpleCache) {
         get {
@@ -105,14 +102,14 @@ object Main extends SimpleRoutingApp {
         )
 
       case Some(files) =>
-        val code = Compiler.deadCodeElimination(
+        val code = Compiler.optimize(
           files.map(f => f.name -> new String(f.toByteArray))
         )
 
         JsObject(
           "success" -> true.toJson,
           "logspam" -> output.mkString.toJson,
-          "code" -> (code + "ScalaJS.modules.ScalaJSExample().main__AT__V()").toJson
+          "code" -> (code + "\nOutput2=Output(); ScalaJSExample().main()").toJson
         )
     }
 

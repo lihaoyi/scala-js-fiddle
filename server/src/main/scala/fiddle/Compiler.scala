@@ -33,11 +33,14 @@ object Compiler{
   )
   val prelude =
     """
+      |
+      |import scala.scalajs.js.annotation.{JSName, JSExport}
+      |@JSName("Output2")
       |object Output extends scalajs.js.Object{
       |  val red: scalatags.HtmlTag = ???
       |  val blue: scalatags.HtmlTag = ???
       |  val green: scalatags.HtmlTag = ???
-      |  def println(s: Any*): Unit = ???
+      |  def println(s: String*): Unit = ???
       |  def clear(): Unit = ???
       |  def scroll(px: Int): Unit = ???
       |  def output: this.type = ???

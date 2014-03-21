@@ -8,6 +8,7 @@ import scala.concurrent.{Promise, Future}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.async.Async.{async, await}
 import scalatags.all._
+import scalatags._
 import rx._
 import scala.scalajs.js.annotation.JSExport
 object Page{
@@ -38,11 +39,8 @@ object Output{
   val green = span(color:="#aaffaa")
   private[this] var outputted = div()
   @JSExport
-  def println(s: Any*) = {
-    val modifier = div(s.map{
-      case t: Modifier => t
-      case x => x.toString: Modifier
-    }:_*)
+  def println(s: String) = {
+    val modifier = div(s)
     outputted = modifier.transform(outputted)
     Client.output.innerHTML = outputted.toString()
     Client.output.scrollTop = Client.output.scrollHeight - Client.output.clientHeight
@@ -64,6 +62,7 @@ object Output{
   def output = this
 }
 import Output.{red, green, blue}
+
 @JSExport
 object Client{
 
@@ -105,7 +104,7 @@ object Client{
     logspam.innerHTML = logged.toString()
     logspam.scrollTop = logspam.scrollHeight - logspam.clientHeight
   }
-  val (defaultGistId, defaultFile) = ("9405209", "LandingPage.scala")
+  val (defaultGistId, defaultFile) = ("9689412", "BasicOperations.scala")
   @JSExport
   def main(args: Array[String]): Unit = {
     clear()
@@ -161,6 +160,7 @@ object Client{
     }
     if(result.success.asInstanceOf[js.Boolean]){
       clear()
+      dom.console.log(""+result.code)
       js.eval(""+result.code)
       log(green("Success"))
     }else{
