@@ -15,6 +15,7 @@ object Tests extends TestSuite{
   val splash =
     """
       |import scalajs.js.annotation.JSExport
+      |import org.scalajs.dom
       |@JSExport
       |object Cow{
       |  @JSExport

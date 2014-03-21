@@ -9,7 +9,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.async.Async.{async, await}
 import scalatags.all._
 import rx._
-import js.annotation.JSExport
+import scala.scalajs.js.annotation.JSExport
 object Page{
 
   def body = Seq(
@@ -60,6 +60,8 @@ object Output{
   def renderer = Client.renderer
   @JSExport
   def canvas = Client.canvas
+  @JSExport
+  def output = this
 }
 import Output.{red, green, blue}
 @JSExport

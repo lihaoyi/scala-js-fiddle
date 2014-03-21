@@ -40,7 +40,7 @@ object Compiler{
       |  def println(s: Any*): Unit = ???
       |  def clear(): Unit = ???
       |  def scroll(px: Int): Unit = ???
-      |  def output: Output = this
+      |  def output: this.type = ???
       |  def renderer: org.scalajs.dom.CanvasRenderingContext2D = ???
       |  def canvas: org.scalajs.dom.HTMLCanvasElement = ???
       |}
@@ -92,10 +92,10 @@ object Compiler{
                     logger: String => Unit) = {
     lazy val settings = new Settings
     val loader = getClass.getClassLoader.asInstanceOf[URLClassLoader]
-    val entries = loader.getURLs.map(_.getPath) :+ "target/scala-2.10/classes/classes"
-
+    val entries = loader.getURLs.map(_.getPath)
+    val classpathEntries = classpath.map(getClass.getResource(_).getPath.replace("%20", " "))
     settings.outputDirs.setSingleOutput(vd)
-    settings.classpath.value = ClassPath.join(entries: _*)
+    settings.classpath.value = ClassPath.join(classpathEntries ++ entries: _*)
 
     val writer = new Writer{
       var inner = ByteString()

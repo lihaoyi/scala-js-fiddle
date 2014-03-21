@@ -2,7 +2,6 @@ import scala.scalajs.sbtplugin.ScalaJSPlugin._
 import ScalaJSKeys._
 import com.typesafe.sbt.SbtStartScript
 
-import com.lihaoyi.workbench.Plugin._
 
 scalaJSSettings
 
@@ -22,12 +21,12 @@ libraryDependencies ++= Seq(
 
 (SbtStartScript.stage in Compile) := (packageJS in Compile).value
 
-workbenchSettings
+//workbenchSettings
 
-bootSnippet := "ScalaJS.modules.fiddle_Client().main__AT__V();"
+//bootSnippet := "ScalaJS.modules.fiddle_Client().main__AT__V();"
 
-//retrieveManaged := true
+retrieveManaged := true
 
-//managedDirectory := file("server/target/scala-2.10/classes/classpath")
+managedDirectory := file("server/target/scala-2.10/classes/classpath")
 
 //updateBrowsers <<= updateBrowsers.triggeredBy(packageJS in Compile)
