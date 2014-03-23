@@ -29,7 +29,7 @@ import spray.routing.RequestContext
 import scala.Some
 import spray.http.HttpResponse
 import spray.http.CacheDirectives.`max-age`
-
+import spray.routing._
 object Static{
   import scalatags._
   import scalatags.all._
@@ -55,26 +55,55 @@ object Static{
         ))
       ),
       body(
-        div(id:="spinner-holder")(
-          div(display:="table-cell", verticalAlign:="middle", height:="100%")(
-            div(style:="text-align: center")(
-              h1("Loading Scala-Js-Fiddle"),
-              div(
-                img(src:="/Shield.svg", height:="200px")
-              ),
-              br,
-              div(
-                img(src:="/spinner.gif")
-              ),
-              p("This takes a while the first time. Please be patient =)")
+        pre(id:="editor"),
+        pre(id:="logspam"),
+        div(id:="sandbox")(
+          canvas(id:="canvas", style:="position: absolute"),
+          div(
+            id:="output",
+            color:="lightgrey",
+            paddingLeft:="2px",
+            boxSizing:="border-box"
+          )(
+            div(id:="spinner-holder")(
+              div(display:="table-cell", verticalAlign:="middle", height:="100%")(
+                div(style:="text-align: center")(
+                  h1("Loading Scala-Js-Fiddle"),
+                  div(
+                    img(src:="/Shield.svg", height:="200px")
+                  ),
+                  br,
+                  div(
+                    img(src:="/spinner.gif")
+                  ),
+                  p("This takes a while the first time. Please be patient =)")
+                )
+              )
             )
+          )
+        ),
+        div(
+          display:="none",
+          form(
+            "method".attr:="post",
+            id:="exportForm",
+            action:="/export",
+            input(
+              id:="exportCompiled",
+              "name".attr:="compiled"
+            ),
+            input(
+              id:="exportSource",
+              "name".attr:="source"
+            )
+
           )
         ),
 //        script(`type`:="text/javascript", src:="/example-extdeps.js"),
 //        script(`type`:="text/javascript", src:="/example-intdeps.js"),
 //        script(`type`:="text/javascript", src:="/example.js"),
         script(`type`:="text/javascript", src:="/example-opt.js"),
-        script(s"Client().main(", raw(arg), "); Output2=Output();")
+        script(s"Output2=Output(); Client().main(", raw(arg), ");")
       )
     ).toString()
 }
@@ -94,12 +123,18 @@ object Main extends SimpleRoutingApp {
             respondWithHeaders(`Cache-Control`(`public`, `max-age`(60L*60L*24L))) {
               pathSingleSlash {
                 complete{
-                  HttpEntity(MediaTypes.`text/html`,"<!DOCTYPE html>" + Static.page("[]"))
+                  HttpEntity(
+                    MediaTypes.`text/html`,
+                    "<!DOCTYPE html>" + Static.page("[]")
+                  )
                 }
               } ~
               path("gist" / Segments){ i =>
                 complete{
-                  HttpEntity(MediaTypes.`text/html`, "<!DOCTYPE html>" + Static.page(i.toJson.toString()))
+                  HttpEntity(
+                    MediaTypes.`text/html`,
+                    "<!DOCTYPE html>" + Static.page(i.toJson.toString())
+                  )
                 }
               } ~
               pathPrefix("js") {
@@ -121,12 +156,35 @@ object Main extends SimpleRoutingApp {
             path("preoptimize"){
               compileStuff(_, Compiler.deadCodeElimination _ andThen funcWrap)
             } ~
+            path("export"){
+              formFields("compiled", "source"){
+                renderCode(_, _, true)
+              }
+            } ~
+            path("import"){
+              formFields("compiled", "source"){
+                renderCode(_, _, false)
+              }
+            } ~
             path("complete" / Segment / IntNumber){
               completeStuff
             }
           }
         }
       }
+    }
+  }
+  def renderCode(compiled: String, source: String, export: Boolean) = {
+    val data = Map(
+      "compiled" -> compiled.toJson,
+      "source" -> source.toJson,
+      "export" -> export.toJson
+    )
+    complete{
+      HttpEntity(
+        MediaTypes.`text/html`,
+        "<!DOCTYPE html>" + Static.page(data.toJson.toString)
+      )
     }
   }
   def completeStuff(flag: String, offset: Int)(ctx: RequestContext): Unit = {

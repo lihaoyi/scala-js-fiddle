@@ -13,22 +13,6 @@ import rx._
 import scala.scalajs.js.annotation.JSExport
 import org.scalajs.dom.extensions.Ajax
 
-object Page{
-
-  def body = Seq(
-    pre(id:="editor"),
-    pre(id:="logspam"),
-    div(id:="sandbox")(
-      canvas(id:="canvas", style:="position: absolute"),
-      div(
-        id:="output",
-        color:="lightgrey",
-        paddingLeft:="2px",
-        boxSizing:="border-box"
-      )
-    )
-  )
-}
 
 @JSExport
 object Output{
@@ -70,16 +54,13 @@ import Output.{red, green, blue}
 @JSExport
 object Client{
 
-  lazy val sandbox = js.Dynamic.global.sandbox.asInstanceOf[dom.HTMLDivElement]
-  lazy val canvas = js.Dynamic.global.canvas.asInstanceOf[dom.HTMLCanvasElement]
-  lazy val renderer = canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
-  
-  lazy val output = js.Dynamic.global.output.asInstanceOf[dom.HTMLDivElement]
+  def sandbox = js.Dynamic.global.sandbox.asInstanceOf[dom.HTMLDivElement]
+  def canvas = js.Dynamic.global.canvas.asInstanceOf[dom.HTMLCanvasElement]
+  def renderer = canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
+
+  def output = js.Dynamic.global.output.asInstanceOf[dom.HTMLDivElement]
 
   def logspam = js.Dynamic.global.logspam.asInstanceOf[dom.HTMLPreElement]
-  dom.document.body.innerHTML = Page.body.mkString
-
-  val cloned = output.innerHTML
 
   var autocompleted: Option[Completer] = None
 
@@ -89,16 +70,13 @@ object Client{
       dom.clearTimeout(i)
     }
     Output.clear()
-    output.innerHTML = cloned
     canvas.height = sandbox.clientHeight
     canvas.width = sandbox.clientWidth
   }
   val fiddleUrl = "http://www.scala-js-fiddle.com"
   val saved = mutable.Map.empty[String, String]
-  var logged = div(
-    div("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-`"), " for autocomplete."),
-    div("- Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
-  )
+  val compilations = mutable.Map.empty[String, String]
+  var logged = div()
   def logln(s: Modifier*): Unit = {
     log(div(s:_*))
   }
@@ -108,7 +86,7 @@ object Client{
     logspam.innerHTML = logged.toString()
     logspam.scrollTop = logspam.scrollHeight - logspam.clientHeight
   }
-
+  var exportAction = ""
   @JSExport
   def main(args: js.Any): Unit = {
     args match {
@@ -118,10 +96,34 @@ object Client{
           case Seq(g) => (g, None)
           case Seq(g, f) => (g, Some(f))
         }
+        exportAction = "/export"
         load(gistId, fileName)
-      case arg: js.String =>
-        logln("Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
-        js.eval(arg)
+
+        logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-`"), " for autocomplete.")
+        logln("- Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
+      case raw: js.Any =>
+        clear()
+        val data = raw.asInstanceOf[js.Dictionary[String]]
+        Editor.sess.setValue(dom.atob(data("source")))
+        compilations(dom.atob(data("source"))) = dom.atob(data("compiled"))
+        js.eval(dom.atob(data("compiled")))
+        if (""+data("export") == "true"){
+          dom.console.log("A")
+          exportAction = "http://localhost:8080/import"
+          Editor.editor.setReadOnly(true)
+          logln("- Code snippet exported from ", a(href:=fiddleUrl, fiddleUrl))
+          logln("- Ctrl/Cmd-S and select 'Web Page, Complete' to save for offline use")
+          logln("- Click ", a(id:="editLink", href:="javascript:", "here"), " to edit a copy online")
+          dom.document
+             .getElementById("editLink")
+             .asInstanceOf[dom.HTMLAnchorElement]
+             .onclick = (e: dom.MouseEvent) => export()
+        }else{
+          dom.console.log("B")
+          exportAction = "/export"
+          logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-`"), " for autocomplete.")
+          logln("- Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
+        }
     }
 
   }
@@ -151,14 +153,16 @@ object Client{
 
     Editor.sess.setValue(content)
     saved(content) = gistId
-    compile("/optimize")
+    val compiled = await(compile("/optimize"))
+    clear()
+    js.eval(compiled)
   }.recover{ case e =>
     logln(red(s"Loading failed with $e,"))
+    e.printStackTrace()
     Editor.sess.setValue("")
   }
 
-  def compile(endpoint: String): Future[Unit] = async {
-
+  def compile(endpoint: String): Future[String] = async {
     val code = Editor.sess.getValue().asInstanceOf[String]
     log("Compiling... ")
     val res = await(Ajax.post(endpoint, code))
@@ -168,17 +172,13 @@ object Client{
       logln(result.logspam.toString)
     }
     if(result.success.asInstanceOf[js.Boolean]){
-      clear()
-
-      js.eval(""+result.code)
       log(green("Success"))
+      logln()
+      ""+result.code
     }else{
       log(red("Failure"))
+      throw new Exception("Compilation Failed")
     }
-    logln()
-  }.recover{ case e =>
-    e.printStackTrace()
-    e
   }
 
   def complete() = async {
@@ -213,10 +213,29 @@ object Client{
       newAutocompleted.renderAll()
     }
   }
+
+  def export() = async {
+    logln("Exporting...")
+    val source = Editor.sess.getValue().asInstanceOf[String]
+    val compiled = compilations.get(source) match{
+      case Some(x) => x
+      case None => await(compile("/optimize"))
+    }
+
+    global.exportCompiled.value = dom.btoa(compiled)
+    global.exportSource.value = dom.btoa(source)
+    global.exportForm.action = exportAction
+    global.exportForm.submit()
+  }.recover{ case e =>
+    logln(red(s"Exporting failed with $e,"))
+    e.printStackTrace()
+    Editor.sess.setValue("")
+  }
+
   def save(): Unit = async{
     await(compile("/preoptimize"))
     val code = Editor.sess.getValue().asInstanceOf[String]
-    val resultId = saved.lift(code) match{
+    val resultId = saved.lift(code) match {
       case Some(id) => id
       case None =>
         val res = await(Ajax.post("https://api.github.com/gists",
@@ -243,5 +262,4 @@ object Client{
     val gistUrl = "https://gist.github.com/" + resultId
     logln("Or view on github at ", a(href:=gistUrl)(gistUrl))
   }
-
 }

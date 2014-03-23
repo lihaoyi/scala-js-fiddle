@@ -1,5 +1,5 @@
 package fiddle
-
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import js.Dynamic.{literal => lit}
 import scala.scalajs.js.Dynamic._
@@ -31,8 +31,9 @@ object Editor{
     editor.renderer.setShowGutter(false)
 
     val bindings = Seq(
-      ("Compile", "Enter", () => Client.compile("/preoptimize")),
+      ("Compile", "Enter", () => Client.compile("/preoptimize").map{x => Client.clear(); js.eval(x)}),
       ("Save", "S", Client.save _),
+      ("Export", "E", Client.export _),
       ("Complete", "`", Client.complete _)
     )
 
