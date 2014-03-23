@@ -14,6 +14,7 @@ libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-compiler" % "2.10.3",
   "com.typesafe.akka" %% "akka-actor" % "2.3.0",
   "io.spray" % "spray-can" % "1.3.1",
+  "io.spray" % "spray-client" % "1.3.1",
   "io.spray" % "spray-caching" % "1.3.1",
   "io.spray" % "spray-httpx" % "1.3.1",
   "io.spray" % "spray-routing" % "1.3.1",

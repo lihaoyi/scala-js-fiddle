@@ -15,6 +15,8 @@ import java.util.PropertyPermission
 import java.lang.reflect.ReflectPermission
 import java.net.SocketPermission
 
+import spray.client.pipelining._
+
 import spray.json._
 import DefaultJsonProtocol._
 import scala.concurrent.Future
@@ -31,7 +33,8 @@ import spray.http.CacheDirectives.`max-age`
 object Static{
   import scalatags._
   import scalatags.all._
-  def page =
+
+  def page(arg: String) =
     html(
       head(
         meta(charset:="utf-8"),
@@ -67,16 +70,17 @@ object Static{
             )
           )
         ),
-        script(`type`:="text/javascript", src:="/example-extdeps.js"),
-        script(`type`:="text/javascript", src:="/example-intdeps.js"),
-        script(`type`:="text/javascript", src:="/example.js"),
-        script("Client().main(); Output2=Output();")
+//        script(`type`:="text/javascript", src:="/example-extdeps.js"),
+//        script(`type`:="text/javascript", src:="/example-intdeps.js"),
+//        script(`type`:="text/javascript", src:="/example.js"),
+        script(`type`:="text/javascript", src:="/example-opt.js"),
+        script(s"Client().main(", raw(arg), "); Output2=Output();")
       )
-    )
+    ).toString()
 }
 object Main extends SimpleRoutingApp {
   implicit val system = ActorSystem()
-  implicit val executionContext = system.dispatcher
+  import system.dispatcher
 
   def main(args: Array[String]): Unit = {
     implicit val Default: CacheKeyer = CacheKeyer {
@@ -90,12 +94,12 @@ object Main extends SimpleRoutingApp {
             respondWithHeaders(`Cache-Control`(`public`, `max-age`(60L*60L*24L))) {
               pathSingleSlash {
                 complete{
-                  HttpEntity(MediaTypes.`text/html`,"<!DOCTYPE html>" + Static.page.toString())
+                  HttpEntity(MediaTypes.`text/html`,"<!DOCTYPE html>" + Static.page("[]"))
                 }
               } ~
               path("gist" / Segments){ i =>
                 complete{
-                  HttpEntity(MediaTypes.`text/html`, "<!DOCTYPE html>" + Static.page.toString())
+                  HttpEntity(MediaTypes.`text/html`, "<!DOCTYPE html>" + Static.page(i.toJson.toString()))
                 }
               } ~
               pathPrefix("js") {
@@ -112,10 +116,10 @@ object Main extends SimpleRoutingApp {
               compileStuff(_, _.filter(_._1.endsWith(".js")).map(_._2).mkString("\n"))
             } ~
             path("optimize"){
-              compileStuff(_, Compiler.optimize)
+              compileStuff(_, Compiler.optimize _ andThen funcWrap)
             } ~
             path("preoptimize"){
-              compileStuff(_, Compiler.deadCodeElimination)
+              compileStuff(_, Compiler.deadCodeElimination _ andThen funcWrap)
             } ~
             path("complete" / Segment / IntNumber){
               completeStuff
@@ -138,6 +142,7 @@ object Main extends SimpleRoutingApp {
       )
     }
   }
+  def funcWrap(s: String) = s"(function(){ $s; ScalaJSExample().main()}).call(window)"
   def compileStuff(ctx: RequestContext, processor: Seq[(String, String)] => String): Unit = {
 
     val output = mutable.Buffer.empty[String]
@@ -163,7 +168,7 @@ object Main extends SimpleRoutingApp {
         JsObject(
           "success" -> true.toJson,
           "logspam" -> output.mkString.toJson,
-          "code" -> s"(function(){ $code; ScalaJSExample().main()}).call(window)".toJson
+          "code" -> code.toJson
         )
     }
 

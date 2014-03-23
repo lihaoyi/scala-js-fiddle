@@ -32,26 +32,23 @@ object Page{
 
 @JSExport
 object Output{
-
-  private[this] var outputted = div()
   @JSExport
   def printlnImpl(s: String) = {
-    val modifier = div(s)
-    outputted = modifier.transform(outputted)
-    Client.output.innerHTML = outputted.toString()
+    val elem = dom.document.createElement("div")
+    elem.textContent = s
+    Client.output.appendChild(elem)
     Client.output.scrollTop = Client.output.scrollHeight - Client.output.clientHeight
   }
   @JSExport
   def renderlnImpl(s: String) = {
-    val modifier = div(raw(s))
-    outputted = modifier.transform(outputted)
-    Client.output.innerHTML = outputted.toString()
+    val elem = dom.document.createElement("div")
+    elem.innerHTML = s
+    Client.output.appendChild(elem)
     Client.output.scrollTop = Client.output.scrollHeight - Client.output.clientHeight
   }
   @JSExport
   def clear() = {
-    outputted = div()
-    Client.output.innerHTML = outputted.toString()
+    Client.output.innerHTML = ""
   }
   @JSExport
   def scroll(px: Int) = {
@@ -111,17 +108,22 @@ object Client{
     logspam.innerHTML = logged.toString()
     logspam.scrollTop = logspam.scrollHeight - logspam.clientHeight
   }
-  val pathSegments = dom.document.location.pathname.toString.split("/")
-  val (gistId, fileName) = pathSegments.toSeq match{
-    case Nil => ("9689412", Some("LandingPage.scala"))
-    case Seq("", "gist", g) => (g, None)
-    case Seq("", "gist", g, f) => (g, Some(f))
-  }
 
   @JSExport
-  def main(args: Array[String]): Unit = {
-    clear()
-    load(gistId, fileName)
+  def main(args: js.Any): Unit = {
+    args match {
+      case args: js.Array[String] =>
+        val (gistId, fileName) = args.toSeq match{
+          case Nil => ("9689412", Some("LandingPage.scala"))
+          case Seq(g) => (g, None)
+          case Seq(g, f) => (g, Some(f))
+        }
+        load(gistId, fileName)
+      case arg: js.String =>
+        logln("Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
+        js.eval(arg)
+    }
+
   }
 
   def load(gistId: String, file: Option[String]): Unit = async {
@@ -160,13 +162,14 @@ object Client{
     val code = Editor.sess.getValue().asInstanceOf[String]
     log("Compiling... ")
     val res = await(Ajax.post(endpoint, code))
-    dom.console.log(""+res.responseText)
+
     val result = js.JSON.parse(res.responseText)
     if (result.logspam.toString != ""){
       logln(result.logspam.toString)
     }
     if(result.success.asInstanceOf[js.Boolean]){
       clear()
+
       js.eval(""+result.code)
       log(green("Success"))
     }else{
@@ -240,4 +243,5 @@ object Client{
     val gistUrl = "https://gist.github.com/" + resultId
     logln("Or view on github at ", a(href:=gistUrl)(gistUrl))
   }
+
 }
