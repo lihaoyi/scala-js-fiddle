@@ -32,8 +32,14 @@ object Compiler{
     name <- Compiler.validJars
     zipStream = new ZipInputStream(getClass.getResourceAsStream(name))
     entries = Iterator.continually{
-      for (ent <- Option(zipStream.getNextEntry)) yield {
-        ent.getName -> Source.fromInputStream(zipStream).mkString
+      for (ent <- Option(zipStream.getNextEntry) ) yield {
+        ent.getName -> (
+          try
+            Source.fromInputStream(zipStream).mkString
+          catch{case e =>
+            ""
+          }
+        )
       }
     }.takeWhile(_ != None).flatten.toMap
     (name, data) <- entries
