@@ -24,31 +24,40 @@ object Compiler{
     "/classpath/jars/org.scala-lang.modules.scalajs/scalajs-library_2.10/scalajs-library_2.10-0.4.1.jar",
     "/classpath/jars/org.scala-lang.modules.scalajs/scalajs-dom_2.10/scalajs-dom_2.10-0.3.jar",
     "/classpath/jars/com.scalatags/scalatags_2.10/scalatags_2.10-0.2.4-JS.jar",
-    "/classpath/jars/com.scalarx/scalarx_2.10/scalarx_2.10-0.2.3-JS.jar"
+    "/classpath/jars/com.scalarx/scalarx_2.10/scalarx_2.10-0.2.3-JS.jar",
+    "/macros_2.10-0.1-SNAPSHOT.jar"
   )
 
+  val libraryFiles = for{
+    name <- Compiler.validJars
+    zipStream = new ZipInputStream(getClass.getResourceAsStream(name))
+    entries = Iterator.continually{
+      for (ent <- Option(zipStream.getNextEntry)) yield {
+        ent.getName -> Source.fromInputStream(zipStream).mkString
+      }
+    }.takeWhile(_ != None).flatten.toMap
+    (name, data) <- entries
+  } yield (name, data)
+
+  def prep(virtualFiles: Seq[(String, String)]) = {
+    val jsFiles = virtualFiles.filter(_._1.endsWith(".js")).toMap
+    val jsInfoFiles = virtualFiles.filter(_._1.endsWith(".sjsinfo")).toMap
+    val jsKeys = jsFiles.keys.map(_.dropRight(".js".length)).toSet
+    val jsInfoKeys = jsInfoFiles.keys.map(_.dropRight(".sjsinfo".length)).toSet
+    val sharedKeys = jsKeys.intersect(jsInfoKeys)
+    val scalaJsFiles = for(key <- sharedKeys.toSeq) yield new VirtualScalaJSClassfile {
+      def name = key + ".js"
+      def content = jsFiles(key + ".js")
+      def info = jsInfoFiles(key + ".sjsinfo")
+    }
+    (jsFiles, jsInfoFiles, scalaJsFiles)
+  }
+  val (jsFiles, jsInfoFiles, preppedLibraryFiles) = prep(libraryFiles)
   import concurrent.ExecutionContext.Implicits.global
   val blacklist = Seq(
     "<init>"
   )
-  val prelude =
-    """
-      |
-      |import scala.scalajs.js.annotation.{JSName, JSExport}
-      |@JSName("Output2")
-      |object Output extends scalajs.js.Object{
-      |  val red: scalatags.HtmlTag = ???
-      |  val blue: scalatags.HtmlTag = ???
-      |  val green: scalatags.HtmlTag = ???
-      |  def println(s: String*): Unit = ???
-      |  def clear(): Unit = ???
-      |  def scroll(px: Int): Unit = ???
-      |  def output: this.type = ???
-      |  def renderer: org.scalajs.dom.CanvasRenderingContext2D = ???
-      |  def canvas: org.scalajs.dom.HTMLCanvasElement = ???
-      |}
-      |import Output._
-    """.stripMargin
+  val prelude = Source.fromInputStream(getClass.getResourceAsStream("/Prelude.scala")).mkString
 
   def toFuture[T](func: Response[T] => Unit): Future[T] = {
     val r = new Response[T]
@@ -134,22 +143,9 @@ object Compiler{
     else Some(vd.iterator.toSeq)
   }
   def deadCodeElimination(userFiles: Seq[(String, String)]) = {
-    val libraryFiles = for{
-      name <- Compiler.validJars
-      zipStream = new ZipInputStream(getClass.getResourceAsStream(name))
-      entries = Iterator.continually{
-        for (ent <- Option(zipStream.getNextEntry)) yield {
-          ent.getName -> Source.fromInputStream(zipStream).mkString
-        }
-      }.takeWhile(_ != None).flatten.toMap
-      (name, data) <- entries
-    } yield (name, data)
-    val virtualFiles = libraryFiles ++ userFiles
-    val jsFiles = virtualFiles.filter(_._1.endsWith(".js")).toMap
-    val jsInfoFiles = virtualFiles.filter(_._1.endsWith(".sjsinfo")).toMap
-    val jsKeys = jsFiles.keys.map(_.dropRight(".js".length)).toSet
-    val jsInfoKeys = jsInfoFiles.keys.map(_.dropRight(".sjsinfo".length)).toSet
-    val sharedKeys = jsKeys.intersect(jsInfoKeys)
+
+    val (_, _, preppedUserFiles) = prep(userFiles)
+
     val res = new ScalaJSOptimizer().optimize(
       ScalaJSOptimizer.Inputs(
         new VirtualJSFile {
@@ -166,17 +162,14 @@ object Compiler{
             def content = jsInfoFiles("javalangObject.sjsinfo")
           }
         ),
-        for(key <- sharedKeys.toSeq) yield new VirtualScalaJSClassfile {
-          def name = key + ".js"
-          def content = jsFiles(key + ".js")
-          def info = jsInfoFiles(key + ".sjsinfo")
-        }
+        preppedLibraryFiles ++ preppedUserFiles
       ),
       ScalaJSOptimizer.OutputConfig("output.js"),
-      Logger
+      Compiler.IgnoreLogger
     )
     res.output.content
   }
+
   def optimize(userFiles: Seq[(String, String)]) = {
     new ScalaJSClosureOptimizer().optimize(
       ScalaJSClosureOptimizer.Inputs(
@@ -188,7 +181,7 @@ object Compiler{
       ScalaJSClosureOptimizer.OutputConfig(
         name = "Hello-opt.js"
       ),
-      Compiler.Logger
+      Compiler.IgnoreLogger
     ).output.content
   }
 
@@ -196,5 +189,10 @@ object Compiler{
     def log(level: Level, message: => String): Unit = println(message)
     def success(message: => String): Unit = println(message)
     def trace(t: => Throwable): Unit = t.printStackTrace()
+  }
+  object IgnoreLogger extends scala.scalajs.tools.logging.Logger {
+    def log(level: Level, message: => String): Unit = ()
+    def success(message: => String): Unit = ()
+    def trace(t: => Throwable): Unit = ()
   }
 }

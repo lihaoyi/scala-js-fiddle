@@ -20,7 +20,8 @@ libraryDependencies ++= Seq(
   "org.scala-lang.modules.scalajs" %% "scalajs-compiler" % "0.4.1",
   "io.spray" %%  "spray-json" % "1.2.5",
   "org.scala-lang.modules.scalajs" %% "scalajs-tools" % "0.4.1",
-"org.scala-lang.modules" %% "scala-async" % "0.9.0-M4" % "provided"
+  "org.scala-lang.modules" %% "scala-async" % "0.9.0-M4" % "provided",
+  "com.scalatags" % "scalatags_2.10" % "0.2.4"
 )
 
 

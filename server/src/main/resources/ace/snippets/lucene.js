@@ -1,1 +1,7 @@
-define("ace/snippets/lucene",["require","exports","module"],function(e,t,n){t.snippetText="",t.scope="lucene"})
+define('ace/snippets/lucene', ['require', 'exports', 'module' ], function(require, exports, module) {
+
+
+exports.snippetText = "";
+exports.scope = "lucene";
+
+});

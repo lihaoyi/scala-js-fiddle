@@ -31,7 +31,7 @@ object Editor{
     editor.renderer.setShowGutter(false)
 
     val bindings = Seq(
-      ("Compile", "Enter", Client.compile _),
+      ("Compile", "Enter", () => Client.compile("/preoptimize")),
       ("Save", "S", Client.save _),
       ("Complete", "`", Client.complete _)
     )

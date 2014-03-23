@@ -11,6 +11,8 @@ import scalatags.all._
 import scalatags._
 import rx._
 import scala.scalajs.js.annotation.JSExport
+import org.scalajs.dom.extensions.Ajax
+
 object Page{
 
   def body = Seq(
@@ -28,19 +30,20 @@ object Page{
   )
 }
 
-
 @JSExport
 object Output{
-  @JSExport
-  val red = span(color:="#ffaaaa")
-  @JSExport
-  val blue = span(color:="#aaaaff")
-  @JSExport
-  val green = span(color:="#aaffaa")
+
   private[this] var outputted = div()
   @JSExport
-  def println(s: String) = {
+  def printlnImpl(s: String) = {
     val modifier = div(s)
+    outputted = modifier.transform(outputted)
+    Client.output.innerHTML = outputted.toString()
+    Client.output.scrollTop = Client.output.scrollHeight - Client.output.clientHeight
+  }
+  @JSExport
+  def renderlnImpl(s: String) = {
+    val modifier = div(raw(s))
     outputted = modifier.transform(outputted)
     Client.output.innerHTML = outputted.toString()
     Client.output.scrollTop = Client.output.scrollHeight - Client.output.clientHeight
@@ -60,6 +63,10 @@ object Output{
   def canvas = Client.canvas
   @JSExport
   def output = this
+
+  def red = span(color:="#ffaaaa")
+  def blue = span(color:="#aaaaff")
+  def green = span(color:="#aaffaa")
 }
 import Output.{red, green, blue}
 
@@ -104,19 +111,19 @@ object Client{
     logspam.innerHTML = logged.toString()
     logspam.scrollTop = logspam.scrollHeight - logspam.clientHeight
   }
-  val (defaultGistId, defaultFile) = ("9689412", "BasicOperations.scala")
+  val pathSegments = dom.document.location.pathname.toString.split("/")
+  val (gistId, fileName) = pathSegments.toSeq match{
+    case Nil => ("9689412", Some("LandingPage.scala"))
+    case Seq("", "gist", g) => (g, None)
+    case Seq("", "gist", g, f) => (g, Some(f))
+  }
+
   @JSExport
   def main(args: Array[String]): Unit = {
     clear()
-    if (dom.document.location.pathname == "/") load(defaultGistId, Some(defaultFile))
-    else {
-      val path = dom.document.location.pathname.drop("/gist/".length)
-      val parts = path.split("/")
-      load(
-        parts(0), parts.lift(1)
-      )
-    }
+    load(gistId, fileName)
   }
+
   def load(gistId: String, file: Option[String]): Unit = async {
 
     val gistUrl = "https://gist.github.com/" + gistId
@@ -142,25 +149,24 @@ object Client{
 
     Editor.sess.setValue(content)
     saved(content) = gistId
-    compile()
+    compile("/optimize")
   }.recover{ case e =>
-    logln(red(s"Loading failed with $e, Falling back to default example."))
-    load(defaultGistId, Some(defaultFile))
+    logln(red(s"Loading failed with $e,"))
+    Editor.sess.setValue("")
   }
 
-  def compile(): Future[Unit] = async {
+  def compile(endpoint: String): Future[Unit] = async {
 
     val code = Editor.sess.getValue().asInstanceOf[String]
     log("Compiling... ")
-    val res = await(Ajax.post("/compile", code))
-
+    val res = await(Ajax.post(endpoint, code))
+    dom.console.log(""+res.responseText)
     val result = js.JSON.parse(res.responseText)
     if (result.logspam.toString != ""){
       logln(result.logspam.toString)
     }
     if(result.success.asInstanceOf[js.Boolean]){
       clear()
-      dom.console.log(""+result.code)
       js.eval(""+result.code)
       log(green("Success"))
     }else{
@@ -205,7 +211,7 @@ object Client{
     }
   }
   def save(): Unit = async{
-    await(compile())
+    await(compile("/preoptimize"))
     val code = Editor.sess.getValue().asInstanceOf[String]
     val resultId = saved.lift(code) match{
       case Some(id) => id

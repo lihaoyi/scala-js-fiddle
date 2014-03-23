@@ -5,7 +5,6 @@ import spray.http.HttpHeaders._
 import spray.httpx.encoding.Gzip
 import spray.routing.directives.CachingDirectives._
 import scala.Some
-import spray.http.HttpResponse
 import spray.routing.{RequestContext, SimpleRoutingApp}
 import akka.actor.ActorSystem
 import spray.routing.directives.CacheKeyer
@@ -23,7 +22,58 @@ import scala.tools.nsc.interpreter.Completion
 import scala.reflect.internal.util.OffsetPosition
 import spray.http.HttpHeaders.`Cache-Control`
 import spray.http.CacheDirectives.{`max-age`, `public`}
+import spray.http.HttpRequest
+import spray.routing.RequestContext
+import scala.Some
+import spray.http.HttpResponse
+import spray.http.CacheDirectives.`max-age`
 
+object Static{
+  import scalatags._
+  import scalatags.all._
+  def page =
+    html(
+      head(
+        meta(charset:="utf-8"),
+        Tags2.title("Scala-Js-Fiddle"),
+        script(src:="/ace/ace.js", `type`:="text/javascript", charset:="utf-8"),
+        link(rel:="stylesheet", href:="/styles.css"),
+        link(rel:="stylesheet", href:="/pure-base-min.css"),
+        script(raw(
+          """
+            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+                (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+              })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+              ga('create', 'UA-27464920-3', 'scala-js-fiddle.com');
+              ga('send', 'pageview');
+          """
+        ))
+      ),
+      body(
+        div(id:="spinner-holder")(
+          div(display:="table-cell", verticalAlign:="middle", height:="100%")(
+            div(style:="text-align: center")(
+              h1("Loading Scala-Js-Fiddle"),
+              div(
+                img(src:="/Shield.svg", height:="200px")
+              ),
+              br,
+              div(
+                img(src:="/spinner.gif")
+              ),
+              p("This takes a while the first time. Please be patient =)")
+            )
+          )
+        ),
+        script(`type`:="text/javascript", src:="/example-extdeps.js"),
+        script(`type`:="text/javascript", src:="/example-intdeps.js"),
+        script(`type`:="text/javascript", src:="/example.js"),
+        script("Client().main(); Output2=Output();")
+      )
+    )
+}
 object Main extends SimpleRoutingApp {
   implicit val system = ActorSystem()
   implicit val executionContext = system.dispatcher
@@ -35,17 +85,18 @@ object Main extends SimpleRoutingApp {
     val simpleCache = routeCache(maxCapacity = 1000)
     startServer("localhost", port = 8080) {
       cache(simpleCache) {
-        get {
-          respondWithHeader(`Cache-Control`(`public`, `max-age`(60L*60L*24L))) {
-            encodeResponse(Gzip) {
+        encodeResponse(Gzip) {
+          get {
+            respondWithHeaders(`Cache-Control`(`public`, `max-age`(60L*60L*24L))) {
               pathSingleSlash {
-                getFromResource("index.html")
+                complete{
+                  HttpEntity(MediaTypes.`text/html`,"<!DOCTYPE html>" + Static.page.toString())
+                }
               } ~
-              path("gist" / Segment){ i =>
-                getFromResource("index.html")
-              } ~
-              path("gist" / Segment / Segment){ (i, j) =>
-                getFromResource("index.html")
+              path("gist" / Segments){ i =>
+                complete{
+                  HttpEntity(MediaTypes.`text/html`, "<!DOCTYPE html>" + Static.page.toString())
+                }
               } ~
               pathPrefix("js") {
                 getFromResourceDirectory("..")
@@ -55,19 +106,24 @@ object Main extends SimpleRoutingApp {
               } ~
               getFromResourceDirectory("")
             }
-          }
-        } ~
-        post {
-          path("compile"){
-            compileStuff
           } ~
-          path("complete" / Segment / IntNumber){
-            completeStuff
+          post {
+            path("compile"){
+              compileStuff(_, _.filter(_._1.endsWith(".js")).map(_._2).mkString("\n"))
+            } ~
+            path("optimize"){
+              compileStuff(_, Compiler.optimize)
+            } ~
+            path("preoptimize"){
+              compileStuff(_, Compiler.deadCodeElimination)
+            } ~
+            path("complete" / Segment / IntNumber){
+              completeStuff
+            }
           }
         }
       }
     }
-
   }
   def completeStuff(flag: String, offset: Int)(ctx: RequestContext): Unit = {
 //    setSecurityManager
@@ -82,11 +138,9 @@ object Main extends SimpleRoutingApp {
       )
     }
   }
-  def compileStuff(ctx: RequestContext): Unit = try{
+  def compileStuff(ctx: RequestContext, processor: Seq[(String, String)] => String): Unit = {
 
     val output = mutable.Buffer.empty[String]
-//    setSecurityManager
-
 
     val res = Compiler.compile(
       Compiler.prelude.getBytes ++ ctx.request.entity.data.toByteArray,
@@ -102,28 +156,19 @@ object Main extends SimpleRoutingApp {
         )
 
       case Some(files) =>
-        val code = Compiler.optimize(
+        val code = processor(
           files.map(f => f.name -> new String(f.toByteArray))
         )
 
         JsObject(
           "success" -> true.toJson,
           "logspam" -> output.mkString.toJson,
-          "code" -> (code + "\nOutput2=Output(); ScalaJSExample().main()").toJson
+          "code" -> s"(function(){ $code; ScalaJSExample().main()}).call(window)".toJson
         )
     }
 
     ctx.responder ! HttpResponse(
       entity=returned.toString,
-      headers=List(
-        `Access-Control-Allow-Origin`(spray.http.AllOrigins)
-      )
-    )
-  } catch{case e: AccessControlException =>
-    e.printStackTrace()
-    ctx.responder ! HttpResponse(
-      status=StatusCodes.BadRequest,
-      entity="",
       headers=List(
         `Access-Control-Allow-Origin`(spray.http.AllOrigins)
       )
