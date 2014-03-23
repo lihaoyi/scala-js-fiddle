@@ -112,7 +112,7 @@ object Client{
           exportAction = "http://localhost:8080/import"
           Editor.editor.setReadOnly(true)
           logln("- Code snippet exported from ", a(href:=fiddleUrl, fiddleUrl))
-          logln("- Ctrl/Cmd-S and select 'Web Page, Complete' to save for offline use")
+          logln("- ", blue("Ctrl/Cmd-S"), " and select ", blue("Web Page, Complete"), " to save for offline use")
           logln("- Click ", a(id:="editLink", href:="javascript:", "here"), " to edit a copy online")
           dom.document
              .getElementById("editLink")
