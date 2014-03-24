@@ -19,7 +19,7 @@ libraryDependencies ++= Seq(
   "org.scala-lang.modules" %% "scala-async" % "0.9.0-M4" % "provided"
 )
 
-(SbtStartScript.stage in Compile) := (packageJS in Compile).value
+(SbtStartScript.stage in Compile) := (optimizeJS in Compile).value
 
 //workbenchSettings
 
