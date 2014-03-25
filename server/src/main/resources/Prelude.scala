@@ -1,6 +1,6 @@
 import scala.scalajs.js.annotation.{JSName, JSExport}
-@JSName("Output2")
-object Output extends scalajs.js.Object{
+@JSName("Api2")
+object Api extends scalajs.js.Object{
   def printlnImpl(s: String*): Unit = ???
   def renderlnImpl(s: String*): Unit = ???
   def clear(): Unit = ???
@@ -9,7 +9,7 @@ object Output extends scalajs.js.Object{
   def renderer: org.scalajs.dom.CanvasRenderingContext2D = ???
   def canvas: org.scalajs.dom.HTMLCanvasElement = ???
 }
-import Output._
+import Api._
 import fiddle.Macros.{println, renderln}
 object Stuff{
   import scalatags.all._

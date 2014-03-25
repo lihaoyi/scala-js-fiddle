@@ -13,47 +13,11 @@ import rx._
 import scala.scalajs.js.annotation.JSExport
 import org.scalajs.dom.extensions.Ajax
 
-
 @JSExport
-object Output{
-  @JSExport
-  def printlnImpl(s: String) = {
-    val elem = dom.document.createElement("div")
-    elem.textContent = s
-    Client.output.appendChild(elem)
-    Client.output.scrollTop = Client.output.scrollHeight - Client.output.clientHeight
-  }
-  @JSExport
-  def renderlnImpl(s: String) = {
-    val elem = dom.document.createElement("div")
-    elem.innerHTML = s
-    Client.output.appendChild(elem)
-    Client.output.scrollTop = Client.output.scrollHeight - Client.output.clientHeight
-  }
-  @JSExport
-  def clear() = {
-    Client.output.innerHTML = ""
-  }
-  @JSExport
-  def scroll(px: Int) = {
-    Client.output.scrollTop = Client.output.scrollTop + px
-  }
-  @JSExport
-  def renderer = Client.renderer
-  @JSExport
-  def canvas = Client.canvas
-  @JSExport
-  def output = this
-
+object Client{
   def red = span(color:="#ffaaaa")
   def blue = span(color:="#aaaaff")
   def green = span(color:="#aaffaa")
-}
-import Output.{red, green, blue}
-
-@JSExport
-object Client{
-
   def sandbox = js.Dynamic.global.sandbox.asInstanceOf[dom.HTMLDivElement]
   def canvas = js.Dynamic.global.canvas.asInstanceOf[dom.HTMLCanvasElement]
   def renderer = canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
@@ -69,7 +33,7 @@ object Client{
       dom.clearInterval(i)
       dom.clearTimeout(i)
     }
-    Output.clear()
+    Api.clear()
     canvas.height = sandbox.clientHeight
     canvas.width = sandbox.clientWidth
   }

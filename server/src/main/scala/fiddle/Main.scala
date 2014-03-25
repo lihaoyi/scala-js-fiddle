@@ -30,83 +30,7 @@ import scala.Some
 import spray.http.HttpResponse
 import spray.http.CacheDirectives.`max-age`
 import spray.routing._
-object Static{
-  import scalatags._
-  import scalatags.all._
 
-  def page(arg: String) =
-    html(
-      head(
-        meta(charset:="utf-8"),
-        Tags2.title("Scala-Js-Fiddle"),
-        script(src:="/ace/ace.js", `type`:="text/javascript", charset:="utf-8"),
-        link(rel:="stylesheet", href:="/styles.css"),
-        link(rel:="stylesheet", href:="/pure-base-min.css"),
-        script(raw(
-          """
-            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-                (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-              })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-              ga('create', 'UA-27464920-3', 'scala-js-fiddle.com');
-              ga('send', 'pageview');
-          """
-        ))
-      ),
-      body(
-        pre(id:="editor"),
-        pre(id:="logspam"),
-        div(id:="sandbox")(
-          canvas(id:="canvas", style:="position: absolute"),
-          div(
-            id:="output",
-            color:="lightgrey",
-            paddingLeft:="2px",
-            boxSizing:="border-box"
-          )(
-            div(id:="spinner-holder")(
-              div(display:="table-cell", verticalAlign:="middle", height:="100%")(
-                div(style:="text-align: center")(
-                  h1("Loading Scala-Js-Fiddle"),
-                  div(
-                    img(src:="/Shield.svg", height:="200px")
-                  ),
-                  br,
-                  div(
-                    img(src:="/spinner.gif")
-                  ),
-                  p("This takes a while the first time. Please be patient =)")
-                )
-              )
-            )
-          )
-        ),
-        div(
-          display:="none",
-          form(
-            "method".attr:="post",
-            id:="exportForm",
-            action:="/export",
-            input(
-              id:="exportCompiled",
-              "name".attr:="compiled"
-            ),
-            input(
-              id:="exportSource",
-              "name".attr:="source"
-            )
-
-          )
-        ),
-//        script(`type`:="text/javascript", src:="/example-extdeps.js"),
-//        script(`type`:="text/javascript", src:="/example-intdeps.js"),
-//        script(`type`:="text/javascript", src:="/example.js"),
-        script(`type`:="text/javascript", src:="/example-opt.js"),
-        script(s"Output2=Output(); Client().main(", raw(arg), ");")
-      )
-    ).toString()
-}
 object Main extends SimpleRoutingApp {
   implicit val system = ActorSystem()
   import system.dispatcher
@@ -155,6 +79,11 @@ object Main extends SimpleRoutingApp {
             } ~
             path("preoptimize"){
               compileStuff(_, Compiler.deadCodeElimination _ andThen funcWrap)
+            } ~
+            path("extdeps"){
+              complete{
+                Compiler.jsFiles.values.mkString("\n")
+              }
             } ~
             path("export"){
               formFields("compiled", "source"){
