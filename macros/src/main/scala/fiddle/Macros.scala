@@ -8,7 +8,7 @@ object Macros {
     import c.universe._
     val strExprs = Seq(exprs).map(e => c.resetLocalAttrs(q"""($e).toString"""))
     val name = newTermName(s)
-    c.Expr[Unit](q"""Api.$name(..$strExprs)""")
+    c.Expr[Unit](q"""Page.$name(..$strExprs)""")
   }
   def printlnProxy(c: Context)(exprs: c.Expr[Any]): c.Expr[Unit] = {
     doPrint("printlnImpl")(c)(exprs)

@@ -4,8 +4,9 @@ object Static{
   import scalatags._
   import scalatags.all._
 
-  def page(arg: String) =
-    html(
+
+  def page(arg: String, source: String = "", compiled: String = "") =
+    "<!DOCTYPE html>" + html(
       head(
         meta(charset:="utf-8"),
         Tags2.title("Scala-Js-Fiddle"),
@@ -25,7 +26,7 @@ object Static{
         ))
       ),
       body(
-        pre(id:="editor"),
+        pre(id:="editor", source),
         pre(id:="logspam"),
         div(id:="sandbox")(
           canvas(id:="canvas", style:="position: absolute"),
@@ -52,25 +53,9 @@ object Static{
               )
             )
         ),
-        div(
-          display:="none",
-          form(
-            "method".attr:="post",
-            id:="exportForm",
-            action:="/export",
-            input(
-              id:="exportCompiled",
-              "name".attr:="compiled"
-            ),
-            input(
-              id:="exportSource",
-              "name".attr:="source"
-            )
-
-          )
-        ),
         script(`type`:="text/javascript", src:="/example-opt.js"),
-        script(s"Api2=Api(); Client().main(", raw(arg), ");")
+        script(s"Page2=Page2();", raw(arg)),
+        script(id:="compiled", raw(compiled))
       )
     ).toString()
 }

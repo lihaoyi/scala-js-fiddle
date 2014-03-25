@@ -7,6 +7,15 @@ import scala.Some
 import org.scalajs.dom
 import rx._
 object Editor{
+  lazy val init: js.Dynamic = {
+    val editor = global.ace.edit("editor")
+    editor.setTheme("ace/theme/twilight")
+    editor.getSession().setMode("ace/mode/scala")
+    editor.renderer.setShowGutter(false)
+    editor
+  }
+}
+class Editor(client: Client){
   lazy val aceDoc = editor.getSession().getDocument()
   lazy val sess = editor.getSession()
 
@@ -20,21 +29,17 @@ object Editor{
     (newRow, newColumn)
   }
 
-  def line = Editor.aceDoc
-                   .getLine(rowCol()._1)
+  def line = aceDoc.getLine(rowCol()._1)
                    .asInstanceOf[js.String]
 
   lazy val editor: js.Dynamic = {
-    val editor = global.ace.edit("editor")
-    editor.setTheme("ace/theme/twilight")
-    editor.getSession().setMode("ace/mode/scala")
-    editor.renderer.setShowGutter(false)
+    val editor = Editor.init
 
     val bindings = Seq(
-      ("Compile", "Enter", () => Client.compile("/preoptimize").map{x => Client.clear(); js.eval(x)}),
-      ("Save", "S", Client.save _),
-      ("Export", "E", Client.export _),
-      ("Complete", "`", Client.complete _)
+      ("Compile", "Enter", () => client.compile("/preoptimize").map{x => client.clear(); js.eval(x)}),
+      ("Save", "S", client.save _),
+      ("Export", "E", client.export _),
+      ("Complete", "`", client.complete _)
     )
 
     for ((name, key, func) <- bindings){
@@ -54,16 +59,16 @@ object Editor{
     editor.on("click", () => dom.setTimeout(
       {() =>
         rowCol() = getRowCol
-        Client.autocompleted.foreach(_.killOrUpdate())
+        client.autocompleted.foreach(_.killOrUpdate())
       },
       1
     ))
     editor.keyBinding.onCommandKey = {(e: js.Dynamic, hashId: js.Dynamic, keyCode: js.Number) =>
       rowCol() = getRowCol
-      (Client.autocompleted, keyCode) match{
+      (client.autocompleted, keyCode) match{
         case (Some(a), x) if x.toInt == dom.extensions.KeyCode.escape =>
           a.clearAll()
-          Client.autocompleted = None
+          client.autocompleted = None
           a.options.kill()
         case (Some(a), x) if x.toInt == dom.extensions.KeyCode.down =>
           a.clearAll()
@@ -75,14 +80,14 @@ object Editor{
           a.renderAll()
         case (Some(a), x) if x.toInt == dom.extensions.KeyCode.enter =>
           a.clear()
-          Client.autocompleted = None
+          client.autocompleted = None
           a.options.kill()
           e.preventDefault()
         case (Some(a), x)
           if Completer.validIdentChars(js.String.fromCharCode(x.toInt).toString()(0)) =>
-          val (row, column) = Editor.rowCol()
+          val (row, column) = rowCol()
 
-          Editor.aceDoc.removeInLine(row, column, column + 1)
+          aceDoc.removeInLine(row, column, column + 1)
 
           dom.setTimeout(
             () => {
@@ -108,7 +113,7 @@ object Editor{
       }
     }
 
-    editor.getSession().setTabSize(2)
+    sess.setTabSize(2)
     js.Dynamic.global.ed = editor
     editor
   }

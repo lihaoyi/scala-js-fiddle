@@ -49,7 +49,7 @@ object Main extends SimpleRoutingApp {
                 complete{
                   HttpEntity(
                     MediaTypes.`text/html`,
-                    "<!DOCTYPE html>" + Static.page("[]")
+                    Static.page(s"Client().gistMain([])", "Loading gist...")
                   )
                 }
               } ~
@@ -57,7 +57,7 @@ object Main extends SimpleRoutingApp {
                 complete{
                   HttpEntity(
                     MediaTypes.`text/html`,
-                    "<!DOCTYPE html>" + Static.page(i.toJson.toString())
+                    Static.page(s"Client().gistMain(${i.toJson.toString()})", "Loading gist...")
                   )
                 }
               } ~
@@ -87,12 +87,12 @@ object Main extends SimpleRoutingApp {
             } ~
             path("export"){
               formFields("compiled", "source"){
-                renderCode(_, _, true)
+                renderCode(_, _, "exportMain")
               }
             } ~
             path("import"){
               formFields("compiled", "source"){
-                renderCode(_, _, false)
+                renderCode(_, _, "importMain")
               }
             } ~
             path("complete" / Segment / IntNumber){
@@ -103,19 +103,16 @@ object Main extends SimpleRoutingApp {
       }
     }
   }
-  def renderCode(compiled: String, source: String, export: Boolean) = {
-    val data = Map(
-      "compiled" -> compiled.toJson,
-      "source" -> source.toJson,
-      "export" -> export.toJson
-    )
+  def renderCode(compiled: String, source: String, bootFunc: String) = {
+
     complete{
       HttpEntity(
         MediaTypes.`text/html`,
-        "<!DOCTYPE html>" + Static.page(data.toJson.toString)
+        Static.page(s"Client().$bootFunc()", source, compiled)
       )
     }
   }
+
   def completeStuff(flag: String, offset: Int)(ctx: RequestContext): Unit = {
 //    setSecurityManager
     Compiler.autocomplete(ctx.request.entity.asString, flag, offset, Compiler.validJars).foreach { res: List[String] =>
