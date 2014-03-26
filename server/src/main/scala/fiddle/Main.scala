@@ -1,5 +1,5 @@
 package fiddle
-
+import acyclic.file
 import spray.http._
 import spray.http.HttpHeaders._
 import spray.httpx.encoding.Gzip

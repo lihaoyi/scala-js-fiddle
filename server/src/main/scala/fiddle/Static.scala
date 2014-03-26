@@ -1,8 +1,8 @@
 package fiddle
-
+import acyclic.file
+import scalatags._
+import scalatags.all._
 object Static{
-  import scalatags._
-  import scalatags.all._
 
 
   def page(arg: String, source: String = "", compiled: String = "") =

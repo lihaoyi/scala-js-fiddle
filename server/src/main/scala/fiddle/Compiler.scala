@@ -1,5 +1,5 @@
 package fiddle
-
+import acyclic.file
 import scala.tools.nsc.Settings
 import java.net.URLClassLoader
 import scala.reflect.io

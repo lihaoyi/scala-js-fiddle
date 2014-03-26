@@ -10,7 +10,7 @@ object Completer {
     column + line.drop(column).takeWhile(validIdentChars).length
   }
 }
-class Completer(client: Client,
+class Completer(editor: Editor,
                 val selected: Var[String],
                 row: Int,
                 column: Int,
@@ -24,14 +24,14 @@ class Completer(client: Client,
   }
 
   lazy val options = Rx{
-    val (_, newColumn) = client.editor.rowCol()
+    val (_, newColumn) = editor.rowCol()
 
-    allOptions.filter(_.startsWith(client.editor.line.substring(column, newColumn)))
+    allOptions.filter(_.startsWith(editor.line.substring(column, newColumn)))
   }
 
   val pos = lit(row=row+1, column=0)
 
-  def endColumn = Completer.endColumn(client.editor.line, column)
+  def endColumn = Completer.endColumn(editor.line, column)
 
   def modulo(a: Int, b: Int) = (a % b + b) % b
 
@@ -49,7 +49,7 @@ class Completer(client: Client,
       if(end > start) options().slice(start, end)
       else options().drop(start) ++ options().take(end)
 
-    client.editor.sess.insert(
+    editor.sess.insert(
       pos,
       sliced.padTo(height, "")
             .map(" " * column + _ + "\n")
@@ -57,17 +57,17 @@ class Completer(client: Client,
     )
   }
   def renderSelected(): Unit = {
-    val (newRow, newColumn) = client.editor.rowCol()
+    val (newRow, newColumn) = editor.rowCol()
 
     if (!options().isEmpty){
 
-      client.editor.aceDoc.insertInLine(
+      editor.aceDoc.insertInLine(
         lit(row=row, column=newColumn),
         options()(modulo(scroll(), options().length)).drop(newColumn - column)
       )
     }
 
-    client.editor.sess.getSelection().selectionLead.setPosition(newRow, newColumn)
+    editor.sess.getSelection().selectionLead.setPosition(newRow, newColumn)
   }
 
   def clearAll() = {
@@ -76,21 +76,21 @@ class Completer(client: Client,
   }
 
   def clear(): Unit = {
-    client.editor.aceDoc.removeLines(row+1, height + row)
+    editor.aceDoc.removeLines(row+1, height + row)
   }
 
   def clearSelected(): Unit = {
-    val (_, newColumn) = client.editor.rowCol()
+    val (_, newColumn) = editor.rowCol()
     if (!options().isEmpty){
-      client.editor.aceDoc.removeInLine(row, newColumn, Completer.endColumn(client.editor.line, newColumn))
+      editor.aceDoc.removeInLine(row, newColumn, Completer.endColumn(editor.line, newColumn))
     }
   }
 
   def killOrUpdate(): Unit = {
-    val (newRow, newColumn) = client.editor.rowCol()
+    val (newRow, newColumn) = editor.rowCol()
 
     clearAll()
-    if (newRow != row || Completer.startColumn(client.editor.line, newColumn) != column) {
+    if (newRow != row || Completer.startColumn(editor.line, newColumn) != column) {
       kill()
     } else {
       renderAll()

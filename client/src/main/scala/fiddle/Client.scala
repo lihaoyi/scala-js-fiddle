@@ -1,4 +1,5 @@
 package fiddle
+import acyclic.file
 import scala.scalajs.js
 import js.Dynamic.{global, literal => lit}
 import org.scalajs.dom
@@ -18,8 +19,13 @@ import scala.Some
 class Client(){
   import Page._
   val exportAction = "/export"
-  var autocompleted: Option[Completer] = None
-  val editor = new Editor(this)
+  val autocompleted: Var[Option[Completer]] = Var(None)
+  val editor = new Editor(autocompleted, Seq(
+    ("Compile", "Enter", () => compile("/preoptimize").map{x => Client.clear(); js.eval(x)}),
+    ("Save", "S", save _),
+    ("Export", "E", export _),
+    ("Complete", "`", complete _)
+  ))
 
   logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-`"), " for autocomplete.")
   logln("- Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
@@ -43,8 +49,8 @@ class Client(){
     }
   }
 
-  def complete() = async {
-    if (autocompleted == None){
+  def complete(): Unit = async {
+    if (autocompleted() == None){
       logln("Completing...")
       val (row, column) = editor.rowCol()
 
@@ -65,19 +71,19 @@ class Client(){
 
       editor.aceDoc.removeInLine(row, column, Completer.endColumn(line, column))
       val newAutocompleted = new Completer(
-        this,
+        editor,
         Var(result.toList.find(_.toLowerCase().startsWith(identifier.toLowerCase())).getOrElse(result(0))),
         row,
         Completer.startColumn(line, column),
         result.toList,
-        () => autocompleted = None
+        () => autocompleted() = None
       )
-      autocompleted = Some(newAutocompleted)
+      autocompleted() = Some(newAutocompleted)
       newAutocompleted.renderAll()
     }
   }
 
-  def export() = async {
+  def export(): Unit = async {
     logln("Exporting...")
     val source = editor.sess.getValue().asInstanceOf[String]
     val compiled = await(compile("/optimize"))

@@ -22,7 +22,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-json" % "2.2.2",
   "org.scala-lang.modules.scalajs" %% "scalajs-tools" % "0.4.1",
   "org.scala-lang.modules" %% "scala-async" % "0.9.0-M4" % "provided",
-  "com.scalatags" % "scalatags_2.10" % "0.2.4"
+  "com.scalatags" % "scalatags_2.10" % "0.2.4",
+  "com.lihaoyi" %% "acyclic" % "0.1.1" % "provided"
 )
 
 resolvers += "Typesafe Repo" at "http://repo.typesafe.com/typesafe/releases/"
@@ -37,3 +38,6 @@ Revolver.settings
 
 javaOptions in Revolver.reStart += "-Xmx2g"
 
+addCompilerPlugin("com.lihaoyi" %% "acyclic" % "0.1.1")
+
+autoCompilerPlugins := true

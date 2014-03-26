@@ -15,7 +15,7 @@ object Editor{
     editor
   }
 }
-class Editor(client: Client){
+class Editor(autocompleted: Var[Option[Completer]], bindings: Seq[(String, String, () => Any)]){
   def aceDoc = editor.getSession().getDocument()
   def sess = editor.getSession()
 
@@ -33,12 +33,7 @@ class Editor(client: Client){
   val editor: js.Dynamic = {
     val editor = Editor.init
 
-    val bindings = Seq(
-      ("Compile", "Enter", () => client.compile("/preoptimize").map{x => Client.clear(); js.eval(x)}),
-      ("Save", "S", client.save _),
-      ("Export", "E", client.export _),
-      ("Complete", "`", client.complete _)
-    )
+
 
     for ((name, key, func) <- bindings){
       editor.commands.addCommand(lit(
@@ -57,16 +52,16 @@ class Editor(client: Client){
     editor.on("click", () => dom.setTimeout(
       {() =>
         rowCol() = getRowCol
-        client.autocompleted.foreach(_.killOrUpdate())
+        autocompleted().foreach(_.killOrUpdate())
       },
       1
     ))
     editor.keyBinding.onCommandKey = {(e: js.Dynamic, hashId: js.Dynamic, keyCode: js.Number) =>
       rowCol() = getRowCol
-      (client.autocompleted, keyCode) match{
+      (autocompleted(), keyCode) match{
         case (Some(a), x) if x.toInt == dom.extensions.KeyCode.escape =>
           a.clearAll()
-          client.autocompleted = None
+          autocompleted() = None
           a.options.kill()
         case (Some(a), x) if x.toInt == dom.extensions.KeyCode.down =>
           a.clearAll()
@@ -78,7 +73,7 @@ class Editor(client: Client){
           a.renderAll()
         case (Some(a), x) if x.toInt == dom.extensions.KeyCode.enter =>
           a.clear()
-          client.autocompleted = None
+          autocompleted() = None
           a.options.kill()
           e.preventDefault()
         case (Some(a), x)

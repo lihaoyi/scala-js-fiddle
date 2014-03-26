@@ -1,5 +1,5 @@
 package fiddle
-
+import acyclic.file
 import scalatags.all._
 import scalatags.Styles.color
 import scala.scalajs.js
