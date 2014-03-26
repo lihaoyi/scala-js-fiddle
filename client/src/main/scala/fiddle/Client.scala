@@ -18,10 +18,26 @@ import scala.Some
 
 class Client(){
   import Page._
-  val exportAction = "/export"
+
   val autocompleted: Var[Option[Completer]] = Var(None)
+
+  lazy val extDeps = Ajax.post("/extdeps").map(_.responseText)
+
+  lazy val evalExtDeps = extDeps.map(x => js.eval(x))
+
   val editor = new Editor(autocompleted, Seq(
-    ("Compile", "Enter", () => compile("/preoptimize").map{x => Client.clear(); js.eval(x)}),
+    ("Compile", "Enter", () => async{
+      if (!extDeps.isCompleted) {
+        val res = await(compile("/preoptimize"))
+        Client.clear()
+        js.eval(res)
+      } else {
+        val res = await(compile("/compile"))
+        Client.clear()
+        evalExtDeps
+        js.eval(res)
+      }
+    }),
     ("Save", "S", save _),
     ("Export", "E", export _),
     ("Complete", "`", complete _)
@@ -31,6 +47,7 @@ class Client(){
   logln("- Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
 
   def compile(endpoint: String): Future[String] = async {
+
     val code = editor.sess.getValue().asInstanceOf[String]
     log("Compiling... ")
     val res = await(Ajax.post(endpoint, code))

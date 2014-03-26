@@ -71,7 +71,7 @@ object Main extends SimpleRoutingApp {
           } ~
           post {
             path("compile"){
-              compileStuff(_, _.filter(_._1.endsWith(".js")).map(_._2).mkString("\n"))
+              compileStuff(_, x => funcWrap(x.filter(_._1.endsWith(".js")).map(_._2).mkString("\n")))
             } ~
             path("optimize"){
               compileStuff(_, Compiler.optimize _ andThen funcWrap)

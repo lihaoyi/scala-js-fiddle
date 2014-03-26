@@ -6,6 +6,7 @@ import scala.scalajs.js.Dynamic._
 import scala.Some
 import org.scalajs.dom
 import rx._
+
 object Editor{
   lazy val init: js.Dynamic = {
     val editor = global.ace.edit("editor")
