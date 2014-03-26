@@ -110,7 +110,7 @@ class Client(){
     val source = editor.sess.getValue().asInstanceOf[String]
     val compiled = compilations.get(source) match{
       case Some(x) => x
-      case None => await(compile("/optimize"))
+      case None => await(compile("/preoptimize"))
     }
     Util.Form.post("/export",
       "source" -> dom.btoa(source),
@@ -160,23 +160,24 @@ object Client{
   import Page._
   @JSExport
   def gistMain(args: js.Array[String]): Unit = async{
-
+    Editor.init
+    dom.console.log("gistMain")
     val (gistId, fileName) = args.toSeq match{
       case Nil => ("9759723", Some("LandingPage.scala"))
       case Seq(g) => (g, None)
       case Seq(g, f) => (g, Some(f))
     }
     async{
-
       val client = new Client()
       val src = await(load(gistId, fileName))
       client.editor.sess.setValue(src)
-      val compiled = await(client.compile("/optimize"))
-      clear()
+      val compiled = await(client.compile("/preoptimize"))
+      client.clear()
       js.eval(compiled)
+    }.recover{ case e =>
+      println("DIED "+ e)
+      e.printStackTrace()
     }
-
-
   }
 
   @JSExport
@@ -190,25 +191,20 @@ object Client{
   }
 
   def load(gistId: String, file: Option[String]): Future[String] = async {
-
-      val gistUrl = "https://gist.github.com/" + gistId
-
-        logln(
-          "Loading ",
-          file.fold(span)(s => span(
-            a(href:=gistUrl + "#file-" + s.toLowerCase.replace('.', '-'))(s),
-            " from "
-          )),
-          a(href:=gistUrl)(gistUrl),
-          "..."
-        )
-
+    val gistUrl = "https://gist.github.com/" + gistId
+    logln(
+      "Loading ",
+      file.fold(span)(s => span(
+        a(href:=gistUrl + "#file-" + s.toLowerCase.replace('.', '-'))(s),
+        " from "
+      )),
+      a(href:=gistUrl)(gistUrl),
+      "..."
+    )
     val res = await(Ajax.get("https://api.github.com/gists/" + gistId))
     val result = js.JSON.parse(res.responseText)
-
     val allFiles = result.files.asInstanceOf[js.Dictionary[js.Dynamic]]
     val mainFile = allFiles(file.getOrElse(""): String)
-
     val firstFile = allFiles(js.Object.keys(allFiles)(0).toString)
     (if (!mainFile.isInstanceOf[js.Undefined]) mainFile else firstFile).selectDynamic("content").toString
   }.recover{ case e =>

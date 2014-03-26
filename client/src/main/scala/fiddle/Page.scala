@@ -7,6 +7,10 @@ import org.scalajs.dom
 import scala.scalajs.js.annotation.JSExport
 import scalatags.Modifier
 
+/**
+ * API for things that belong to the page, and are useful to both the fiddle
+ * client, user code as well as exported read-only pages.
+ */
 @JSExport
 object Page{
   def red = span(color:="#ffaaaa")

@@ -21,6 +21,7 @@ libraryDependencies ++= Seq(
 
 (SbtStartScript.stage in Compile) := (optimizeJS in Compile).value
 
+relativeSourceMaps := true
 //workbenchSettings
 
 //bootSnippet := "ScalaJS.modules.fiddle_Client().main__AT__V();"

@@ -16,10 +16,8 @@ object Editor{
   }
 }
 class Editor(client: Client){
-  lazy val aceDoc = editor.getSession().getDocument()
-  lazy val sess = editor.getSession()
-
-  val rowCol = Var{ getRowCol }
+  def aceDoc = editor.getSession().getDocument()
+  def sess = editor.getSession()
 
   def getRowCol = {
     val Seq(newRow, newColumn) = Seq(
@@ -32,7 +30,7 @@ class Editor(client: Client){
   def line = aceDoc.getLine(rowCol()._1)
                    .asInstanceOf[js.String]
 
-  lazy val editor: js.Dynamic = {
+  val editor: js.Dynamic = {
     val editor = Editor.init
 
     val bindings = Seq(
@@ -113,8 +111,9 @@ class Editor(client: Client){
       }
     }
 
-    sess.setTabSize(2)
+    editor.getSession().setTabSize(2)
     js.Dynamic.global.ed = editor
     editor
   }
+  val rowCol = Var{ getRowCol }
 }

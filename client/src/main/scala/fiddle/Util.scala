@@ -4,7 +4,8 @@ import org.scalajs.dom
 import scala.concurrent.Future
 
 /**
- * Created by haoyi on 3/25/14.
+ * Things that should eventually be pushed upstream to one of the libraries
+ * that scala-js-fiddle depends on.
  */
 object Util {
   object Form{
