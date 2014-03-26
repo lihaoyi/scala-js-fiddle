@@ -17,8 +17,7 @@ import java.net.SocketPermission
 
 import spray.client.pipelining._
 
-import spray.json._
-import DefaultJsonProtocol._
+import play.api.libs.json._
 import scala.concurrent.Future
 import scala.tools.nsc.interpreter.Completion
 import scala.reflect.internal.util.OffsetPosition
@@ -57,7 +56,7 @@ object Main extends SimpleRoutingApp {
                 complete{
                   HttpEntity(
                     MediaTypes.`text/html`,
-                    Static.page(s"Client().gistMain(${i.toJson.toString()})", "Loading gist...")
+                    Static.page(s"Client().gistMain(${JsArray(i.map(JsString)).toString()})", "Loading gist...")
                   )
                 }
               } ~
@@ -116,7 +115,7 @@ object Main extends SimpleRoutingApp {
   def completeStuff(flag: String, offset: Int)(ctx: RequestContext): Unit = {
 //    setSecurityManager
     Compiler.autocomplete(ctx.request.entity.asString, flag, offset, Compiler.validJars).foreach { res: List[String] =>
-      val response = res.toJson.toString
+      val response = JsArray(res.map(JsString)).toString()
       println(s"got autocomplete: sending $response")
       ctx.responder ! HttpResponse(
         entity=response,
@@ -139,9 +138,9 @@ object Main extends SimpleRoutingApp {
 
     val returned = res match {
       case None =>
-        JsObject(
-          "success" -> false.toJson,
-          "logspam" -> output.mkString.toJson
+        Json.obj(
+          "success" -> false,
+          "logspam" -> output.mkString
         )
 
       case Some(files) =>
@@ -149,10 +148,10 @@ object Main extends SimpleRoutingApp {
           files.map(f => f.name -> new String(f.toByteArray))
         )
 
-        JsObject(
-          "success" -> true.toJson,
-          "logspam" -> output.mkString.toJson,
-          "code" -> code.toJson
+        Json.obj(
+          "success" -> true,
+          "logspam" -> output.mkString,
+          "code" -> code
         )
     }
 

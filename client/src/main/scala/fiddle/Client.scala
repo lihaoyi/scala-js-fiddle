@@ -26,8 +26,8 @@ class FrozenClient{
      .asInstanceOf[dom.HTMLAnchorElement]
      .onclick = { (e: dom.MouseEvent) =>
     Util.Form.post("http://localhost:8080/import",
-      "source" -> dom.btoa(editor.sess.getValue().toString),
-      "compiled" -> dom.btoa(dom.document.getElementById("compiled").innerHTML)
+      "source" -> editor.getSession().getValue().toString,
+      "compiled" -> dom.document.getElementById("compiled").innerHTML
     )
   } 
 }
@@ -39,18 +39,6 @@ class Client(){
 
   logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-`"), " for autocomplete.")
   logln("- Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
-  def clear() = {
-    for(i <- 0 until 1000){
-      dom.clearInterval(i)
-      dom.clearTimeout(i)
-    }
-    Page.clear()
-    canvas.height = sandbox.clientHeight
-    canvas.width = sandbox.clientWidth
-  }
-
-  val saved = mutable.Map.empty[String, String]
-  val compilations = mutable.Map.empty[String, String]
 
   def compile(endpoint: String): Future[String] = async {
     val code = editor.sess.getValue().asInstanceOf[String]
@@ -108,56 +96,53 @@ class Client(){
   def export() = async {
     logln("Exporting...")
     val source = editor.sess.getValue().asInstanceOf[String]
-    val compiled = compilations.get(source) match{
-      case Some(x) => x
-      case None => await(compile("/preoptimize"))
-    }
+    val compiled = await(compile("/optimize"))
     Util.Form.post("/export",
-      "source" -> dom.btoa(source),
-      "compiled" -> dom.btoa(compiled) 
+      "source" -> source,
+      "compiled" -> compiled
     )
-   
   }.recover{ case e =>
     logln(red(s"Exporting failed with $e,"))
     e.printStackTrace()
-    editor.sess.setValue("")
   }
 
   def save(): Unit = async{
-    await(compile("/preoptimize"))
+    await(compile("/optimize"))
     val code = editor.sess.getValue().asInstanceOf[String]
-    val resultId = saved.lift(code) match {
-      case Some(id) => id
-      case None =>
-        val res = await(Ajax.post("https://api.github.com/gists",
-          data = js.JSON.stringify(
-            lit(
-              description = "Scala.jsFiddle gist",
-              public = true,
-              files = js.Dictionary(
-                ("Main.scala": js.String) -> lit(
-                  content = code
-                )
-              )
+    val res = await(Ajax.post("https://api.github.com/gists",
+      data = js.JSON.stringify(
+        lit(
+          description = "Scala.jsFiddle gist",
+          public = true,
+          files = js.Dictionary(
+            ("Main.scala": js.String) -> lit(
+              content = code
             )
           )
-        ))
-        val result = js.JSON.parse(res.responseText)
-        saved(code) = result.id.toString
-        result.id
-    }
-
-    val fiddleUrl = dom.document.location.origin + "/gist/" + resultId
-    logln("Saved as ", a(href:=fiddleUrl)(fiddleUrl))
-    dom.history.pushState(null, null, "/gist/" + resultId)
-    val gistUrl = "https://gist.github.com/" + resultId
-    logln("Or view on github at ", a(href:=gistUrl)(gistUrl))
+        )
+      )
+    ))
+    val result = js.JSON.parse(res.responseText)
+    val resultId = result.id
+    Util.Form.get("/gist/" + resultId)
   }
 }
+
 @JSExport
 object Client{
   val fiddleUrl = "http://www.scala-js-fiddle.com"
   import Page._
+
+  def clear() = {
+    for(i <- 0 until 1000){
+      dom.clearInterval(i)
+      dom.clearTimeout(i)
+    }
+    Page.clear()
+    canvas.height = sandbox.clientHeight
+    canvas.width = sandbox.clientWidth
+  }
+
   @JSExport
   def gistMain(args: js.Array[String]): Unit = async{
     Editor.init
@@ -172,7 +157,7 @@ object Client{
       val src = await(load(gistId, fileName))
       client.editor.sess.setValue(src)
       val compiled = await(client.compile("/preoptimize"))
-      client.clear()
+      clear()
       js.eval(compiled)
     }.recover{ case e =>
       println("DIED "+ e)
@@ -182,11 +167,13 @@ object Client{
 
   @JSExport
   def importMain() = {
+    clear()
     new Client()
   }
 
   @JSExport
   def exportMain() = {
+    clear()
     new FrozenClient()
   }
 

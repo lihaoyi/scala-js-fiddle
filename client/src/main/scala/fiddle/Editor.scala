@@ -34,7 +34,7 @@ class Editor(client: Client){
     val editor = Editor.init
 
     val bindings = Seq(
-      ("Compile", "Enter", () => client.compile("/preoptimize").map{x => client.clear(); js.eval(x)}),
+      ("Compile", "Enter", () => client.compile("/preoptimize").map{x => Client.clear(); js.eval(x)}),
       ("Save", "S", client.save _),
       ("Export", "E", client.export _),
       ("Complete", "`", client.complete _)
