@@ -15,22 +15,6 @@ import org.scalajs.dom.extensions.Ajax
 import Client.fiddleUrl
 import scala.Some
 
-class FrozenClient{
-  import Page._
-  val editor = Editor.init
-  logln("- Code snippet exported from ", a(href:=fiddleUrl, fiddleUrl))
-  logln("- ", blue("Ctrl/Cmd-S"), " and select ", blue("Web Page, Complete"), " to save for offline use")
-  logln("- Click ", a(id:="editLink", href:="javascript:", "here"), " to edit a copy online")
-  dom.document
-     .getElementById("editLink")
-     .asInstanceOf[dom.HTMLAnchorElement]
-     .onclick = { (e: dom.MouseEvent) =>
-    Util.Form.post("http://localhost:8080/import",
-      "source" -> editor.getSession().getValue().toString,
-      "compiled" -> dom.document.getElementById("compiled").innerHTML
-    )
-  } 
-}
 class Client(){
   import Page._
   val exportAction = "/export"
@@ -101,9 +85,6 @@ class Client(){
       "source" -> source,
       "compiled" -> compiled
     )
-  }.recover{ case e =>
-    logln(red(s"Exporting failed with $e,"))
-    e.printStackTrace()
   }
 
   def save(): Unit = async{
@@ -156,7 +137,7 @@ object Client{
       val client = new Client()
       val src = await(load(gistId, fileName))
       client.editor.sess.setValue(src)
-      val compiled = await(client.compile("/preoptimize"))
+      val compiled = await(client.compile("/optimize"))
       clear()
       js.eval(compiled)
     }.recover{ case e =>
@@ -174,7 +155,19 @@ object Client{
   @JSExport
   def exportMain() = {
     clear()
-    new FrozenClient()
+    val editor = Editor.init
+    logln("- Code snippet exported from ", a(href:=fiddleUrl, fiddleUrl))
+    logln("- ", blue("Ctrl/Cmd-S"), " and select ", blue("Web Page, Complete"), " to save for offline use")
+    logln("- Click ", a(id:="editLink", href:="javascript:", "here"), " to edit a copy online")
+    dom.document
+      .getElementById("editLink")
+      .asInstanceOf[dom.HTMLAnchorElement]
+      .onclick = { (e: dom.MouseEvent) =>
+      Util.Form.post("http://localhost:8080/import",
+        "source" -> editor.getSession().getValue().toString,
+        "compiled" -> dom.document.getElementById("compiled").innerHTML
+      )
+    }
   }
 
   def load(gistId: String, file: Option[String]): Future[String] = async {
@@ -199,6 +192,4 @@ object Client{
     e.printStackTrace()
     ""
   }
-
-  
 }

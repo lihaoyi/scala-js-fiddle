@@ -11,8 +11,9 @@ object Static{
         meta(charset:="utf-8"),
         Tags2.title("Scala-Js-Fiddle"),
         script(src:="/ace/ace.js", `type`:="text/javascript", charset:="utf-8"),
+        link(rel:="stylesheet", href:="/normalize.css"),
         link(rel:="stylesheet", href:="/styles.css"),
-        link(rel:="stylesheet", href:="/pure-base-min.css"),
+
         script(raw(
           """
             (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){

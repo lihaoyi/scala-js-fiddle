@@ -1,8 +1,10 @@
 import scala.scalajs.js.annotation.{JSName, JSExport}
 @JSName("Page2")
 object Page extends scalajs.js.Object{
-  def printlnImpl(s: String*): Unit = ???
-  def renderlnImpl(s: String*): Unit = ???
+  def println(s: String): Unit = ???
+  def renderln(s: String): Unit = ???
+  def print(s: String): Unit = ???
+  def render(s: String): Unit = ???
   def clear(): Unit = ???
   def scroll(px: Int): Unit = ???
   def output: this.type = ???
@@ -10,7 +12,7 @@ object Page extends scalajs.js.Object{
   def canvas: org.scalajs.dom.HTMLCanvasElement = ???
 }
 import Page._
-import fiddle.Macros.{println, renderln}
+import fiddle.Macros.{println, renderln, print, render}
 object Stuff{
   import scalatags.all._
   def red = span(color:="#ffaaaa")

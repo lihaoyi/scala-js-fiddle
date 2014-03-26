@@ -5,6 +5,9 @@
     bottom: 20%;
     left: 0;
     right: 50%;
+    background-color: rgb(20, 20, 20);
+    box-sizing: border-box;
+    padding-left: 3px;
 }
 #logspam{
     margin: 0;
@@ -16,6 +19,8 @@
     background-color: #222222;
     color: white;
     overflow: auto;
+    box-sizing: border-box;
+    padding: 2px 4px;
 }
 #sandbox {
     margin: 0;
@@ -33,10 +38,12 @@
     overflow: auto;
 }
 
-body {
+body, pre {
     overflow: hidden;
     background-color: #222222;
     color: #eeeeee;
+    font-size: 12px;
+    font-family: Monaco, Menlo, 'Ubuntu Mono', Consolas, source-code-pro, monospace;
 }
 
 a:link{

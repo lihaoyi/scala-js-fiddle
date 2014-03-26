@@ -25,19 +25,25 @@ object Page{
   def output = js.Dynamic.global.output.asInstanceOf[dom.HTMLDivElement]
 
   def logspam = js.Dynamic.global.logspam.asInstanceOf[dom.HTMLPreElement]
+  import scalatags.raw
+  @JSExport
+  def println(s: String) = {
+    renderln(div(s).toString)
+  }
 
   @JSExport
-  def printlnImpl(s: String) = {
-    val elem = dom.document.createElement("div")
-    elem.textContent = s
-    output.appendChild(elem)
+  def print(s: String) = {
+    output.appendChild(dom.document.createTextNode(s))
     output.scrollTop = output.scrollHeight - output.clientHeight
   }
+
   @JSExport
-  def renderlnImpl(s: String) = {
-    val elem = dom.document.createElement("div")
-    elem.innerHTML = s
-    output.appendChild(elem)
+  def renderln(s: String) = {
+    render(div(raw(s)).toString)
+  }
+  @JSExport
+  def render(s: String) = {
+    output.appendChild(Util.createDom(s))
     output.scrollTop = output.scrollHeight - output.clientHeight
   }
   @JSExport

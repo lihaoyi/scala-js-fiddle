@@ -32,4 +32,14 @@ object Util {
       form.submit()
     }
   }
+
+  /**
+   * Creates a HTML node from the given string
+   */
+  def createDom(s: String) = {
+    val parser = new dom.DOMParser
+    dom.document.adoptNode(
+      parser.parseFromString(s, "text/html").documentElement
+    ).lastChild.lastChild
+  }
 }
