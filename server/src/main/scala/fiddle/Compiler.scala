@@ -29,22 +29,16 @@ object Compiler{
     "/macros_2.10-0.1-SNAPSHOT.jar"
   )
 
-  val libraryFiles = for{
-    name <- Compiler.validJars
-    zipStream = new ZipInputStream(getClass.getResourceAsStream(name))
-    entries = Iterator.continually{
-      for (ent <- Option(zipStream.getNextEntry) ) yield {
-        ent.getName -> (
-          try
-            Source.fromInputStream(zipStream).mkString
-          catch{case e =>
-            ""
-          }
-        )
-      }
-    }.takeWhile(_ != None).flatten.toMap
-    (name, data) <- entries
-  } yield (name, data)
+  val classPath = {
+    val builder = new ScalaJSClasspathEntries.Builder 
+    for( name <- Compiler.validJars){
+      ScalaJSClasspathEntries.readEntriesInJar(
+        builder,
+        getClass.getResourceAsStream(name)
+      )
+    }
+    builder.result  
+  }
 
   def prep(virtualFiles: Seq[(String, String)]) = {
     val jsFiles = virtualFiles.filter(_._1.endsWith(".js")).toMap
@@ -59,7 +53,7 @@ object Compiler{
     }
     (jsFiles, jsInfoFiles, scalaJsFiles)
   }
-  val (jsFiles, jsInfoFiles, preppedLibraryFiles) = prep(libraryFiles)
+  
   import concurrent.ExecutionContext.Implicits.global
   val blacklist = Seq(
     "<init>"
@@ -149,44 +143,27 @@ object Compiler{
     if (vd.iterator.isEmpty) None
     else Some(vd.iterator.toSeq)
   }
-  def packageJS() = {
+  def extdeps () = {
     import scala.scalajs.tools.packager.ScalaJSPackager
     val packager = new ScalaJSPackager
     val stringer = new StringWriter()
     val printer = new PrintWriter(stringer)
+
     packager.packageScalaJS(
-      ScalaJSPackager.Inputs(prepClasspath(Nil)),
+      ScalaJSPackager.Inputs(classPath),
       ScalaJSPackager.OutputConfig("extdeps.js", printer, None),
       IgnoreLogger
     )
     stringer.toString
   }
-  def prepClasspath(preppedUserFiles: Seq[VirtualScalaJSClassfile]) = {
-    ScalaJSClasspathEntries(
-      new VirtualJSFile {
-        def name = "scalajs-corejslib.js"
-        def content = jsFiles("scalajs-corejslib.js")
-      },
-      Seq(
-        new VirtualFile {
-          def name = "javalangString.sjsinfo"
-          def content = jsInfoFiles("javalangString.sjsinfo")
-        },
-        new VirtualFile {
-          def name = "javalangObject.sjsinfo"
-          def content = jsInfoFiles("javalangObject.sjsinfo")
-        }
-      ),
-      preppedLibraryFiles ++ preppedUserFiles
-    )
-  }
+  
   def deadCodeElimination(userFiles: Seq[(String, String)]) = {
 
     val (_, _, preppedUserFiles) = prep(userFiles)
 
     val res = new ScalaJSOptimizer().optimize(
       ScalaJSOptimizer.Inputs(
-        prepClasspath(preppedUserFiles)
+        classPath.copy(classFiles = classPath.classFiles ++ preppedUserFiles)
       ),
       ScalaJSOptimizer.OutputConfig("output.js"),
       Compiler.IgnoreLogger

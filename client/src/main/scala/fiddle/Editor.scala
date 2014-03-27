@@ -6,7 +6,7 @@ import scala.scalajs.js.Dynamic._
 import scala.Some
 import org.scalajs.dom
 import rx._
-
+import JsVal.jsVal2jsAny
 object Editor{
   lazy val init: js.Dynamic = {
     val editor = global.ace.edit("editor")
@@ -35,17 +35,15 @@ class Editor(autocompleted: Var[Option[Completer]], bindings: Seq[(String, Strin
   val editor: js.Dynamic = {
     val editor = Editor.init
 
-
-
     for ((name, key, func) <- bindings){
-      editor.commands.addCommand(lit(
-        name = name,
-        bindKey = lit(
-          win = "Ctrl-" + key,
-          mac = "Command-" + key,
-          sender = "editor|cli"
+      editor.commands.addCommand(JsVal.obj(
+        "name" -> name,
+        "bindKey" -> JsVal.obj(
+          "win" -> ("Ctrl-" + key),
+          "mac" -> ("Command-" + key),
+          "sender" -> "editor|cli"
         ),
-        exec = func
+        "exec" -> func
       ))
     }
 

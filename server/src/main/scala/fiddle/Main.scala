@@ -81,7 +81,7 @@ object Main extends SimpleRoutingApp {
             } ~
             path("extdeps"){
               complete{
-                Compiler.packageJS()
+                Compiler.extdeps()
               }
             } ~
             path("export"){

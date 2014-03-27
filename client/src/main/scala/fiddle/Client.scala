@@ -13,7 +13,7 @@ import scala.scalajs.js.annotation.JSExport
 import org.scalajs.dom.extensions.Ajax
 import Client.fiddleUrl
 import scala.Some
-
+import JsVal.jsVal2jsAny
 
 class Client(){
   import Page._
@@ -33,18 +33,28 @@ class Client(){
   lazy val extdepsLoop = async{
     extdeps = await(Ajax.post("/extdeps")).responseText
     compileEndpoint = "/compile"
+  }.recover{ case e =>
+    logln(red(s"B failed with $e,"))
+    e.printStackTrace()
+    ""
   }
 
   val compilationLoop = async{
     val code = await(command())
+
     await(compile(code, "/optimize")).foreach(exec)
     while(true){
       val code = await(command())
-      exec(extdeps)
+      val compiled = await(compile(code, compileEndpoint))
+      js.eval(extdeps)
       extdeps = ""
-      await(compile(code, compileEndpoint)).foreach(exec)
+      compiled.foreach(exec)
       extdepsLoop
     }
+  }.recover{ case e =>
+    logln(red(s"C failed with $e,"))
+    e.printStackTrace()
+    ""
   }
 
   val editor: Editor = new Editor(autocompleted, Seq(
@@ -58,19 +68,25 @@ class Client(){
   logln("- Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
 
   def compile(code: String, endpoint: String): Future[Option[String]] = async {
-    log("Compiling... ")
-    val res = await(Ajax.post(endpoint, code))
-
-    val result = JsVal.parse(res.responseText)
-    if (result("logspam").asString != ""){
-      logln(result("logspam").asString)
+    if (code == "") None
+    else {
+      log("Compiling... ")
+      val res = await(Ajax.post(endpoint, code))
+      val result = JsVal.parse(res.responseText)
+      if (result("logspam").asString != ""){
+        logln(result("logspam").asString)
+      }
+      if(result("success").asBoolean) log(green("Success"))
+      else log(red("Failure"))
+      logln()
+      result.get("code").map(_.asString)
     }
-    if(result("success").asBoolean) log(green("Success"))
-    else log(red("Failure"))
-    logln()
-
-    result.get("code").map(_.asString)
+  }.recover{ case e =>
+    logln(red(s"D failed with $e,"))
+    e.printStackTrace()
+    None
   }
+
 
   def complete(): Unit = async {
     if (autocompleted() == None){
@@ -104,37 +120,47 @@ class Client(){
       autocompleted() = Some(newAutocompleted)
       newAutocompleted.renderAll()
     }
+  }.recover{ case e =>
+    logln(red(s"E failed with $e,"))
+    e.printStackTrace()
+    ""
   }
 
   def export(): Unit = async {
     logln("Exporting...")
-    val source = editor.sess.getValue().asInstanceOf[String]
     val compiled = await(compile(editor.code, "/optimize"))
     compiled.foreach{ code =>
       Util.Form.post("/export",
-        "source" -> source,
+        "source" -> editor.code,
         "compiled" -> code
       )
     }
+  }.recover{ case e =>
+    logln(red(s"F failed with $e,"))
+    e.printStackTrace()
+    ""
   }
 
   def save(): Unit = async{
     await(compile(editor.code, "/optimize"))
-    val code = editor.sess.getValue().asInstanceOf[String]
-    val res = await(Ajax.post("https://api.github.com/gists",
-      data = JsVal.obj(
-        "description" -> "Scala.jsFiddle gist",
-        "public" -> true,
-        "files" -> JsVal.obj(
-          "Main.scala" -> JsVal.obj(
-            "content" -> code
-          )
+    val data = JsVal.obj(
+      "description" -> "Scala.jsFiddle gist",
+      "public" -> true,
+      "files" -> JsVal.obj(
+        "Main.scala" -> JsVal.obj(
+          "content" -> editor.code
         )
-      ).asString
-    ))
+      )
+    ).toString()
+
+    val res = await(Ajax.post("https://api.github.com/gists", data = data))
     val result = js.JSON.parse(res.responseText)
     val resultId = result.id
     Util.Form.get("/gist/" + resultId)
+  }.recover{ case e =>
+    logln(red(s"G failed with $e,"))
+    e.printStackTrace()
+    ""
   }
 }
 
@@ -155,31 +181,33 @@ object Client{
 
   @JSExport
   def gistMain(args: js.Array[String]): Unit = async{
+
     Editor.init
-    dom.console.log("gistMain")
     val (gistId, fileName) = args.toSeq match{
       case Nil => ("9759723", Some("LandingPage.scala"))
       case Seq(g) => (g, None)
       case Seq(g, f) => (g, Some(f))
     }
-
-    async{
-      val src = await(load(gistId, fileName))
-      val client = new Client()
-      client.editor.sess.setValue(src)
-      client.command.update(src)
-    }
+    val src = await(load(gistId, fileName))
+    val client = new Client()
+    client.editor.sess.setValue(src)
+    client.command.update(src)
+  }.recover{ case e =>
+    logln(red(s"A failed with $e,"))
+    e.printStackTrace()
+    ""
   }
 
   @JSExport
   def importMain(): Unit = {
     clear()
     val client = new Client()
-    client.command.update(client.editor.code)
+    client.command.update("")
   }
 
   @JSExport
   def exportMain(): Unit = {
+    dom.console.log("exportMain")
     clear()
     val editor = Editor.init
     logln("- Code snippet exported from ", a(href:=fiddleUrl, fiddleUrl))
