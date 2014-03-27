@@ -1,10 +1,8 @@
 package fiddle
 import acyclic.file
 import scala.scalajs.js
-import js.Dynamic.{global, literal => lit}
+import js.Dynamic.{literal => lit}
 import org.scalajs.dom
-import collection.mutable
-import scalatags.{HtmlTag, Modifier, Tags2}
 import scala.concurrent.{Promise, Future}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.runNow
 import scala.async.Async.{async, await}
@@ -16,22 +14,13 @@ import org.scalajs.dom.extensions.Ajax
 import Client.fiddleUrl
 import scala.Some
 
-class Cell[T](){
-  var value: Promise[T] = null
-  def apply(): Future[T] = {
-    value = Promise[T]
-    value.future
-  }
-  def update(t: T) = {
-    if (!value.isCompleted) value.success(t)
-  }
-}
+
 class Client(){
   import Page._
 
   val autocompleted: Var[Option[Completer]] = Var(None)
 
-  val command = new Cell[Unit]()
+  val command = Channel[String]()
 
   def exec(s: String) = {
     Client.clear()
@@ -47,19 +36,19 @@ class Client(){
   }
 
   val compilationLoop = async{
-    await(command())
-    exec(await(compile("/optimize")))
+    val code = await(command())
+    await(compile(code, "/optimize")).foreach(exec)
     while(true){
-      await(command())
-      js.eval(extdeps)
+      val code = await(command())
+      exec(extdeps)
       extdeps = ""
-      exec(await(compile(compileEndpoint)))
+      await(compile(code, compileEndpoint)).foreach(exec)
       extdepsLoop
     }
   }
 
-  val editor = new Editor(autocompleted, Seq(
-    ("Compile", "Enter", () => command.update()),
+  val editor: Editor = new Editor(autocompleted, Seq(
+    ("Compile", "Enter", () => command.update(editor.code)),
     ("Save", "S", save),
     ("Export", "E", export),
     ("Complete", "`", complete)
@@ -68,24 +57,19 @@ class Client(){
   logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-`"), " for autocomplete.")
   logln("- Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
 
-  def compile(endpoint: String): Future[String] = async {
-
-    val code = editor.sess.getValue().asInstanceOf[String]
+  def compile(code: String, endpoint: String): Future[Option[String]] = async {
     log("Compiling... ")
     val res = await(Ajax.post(endpoint, code))
 
-    val result = js.JSON.parse(res.responseText)
-    if (result.logspam.toString != ""){
-      logln(result.logspam.toString)
+    val result = JsVal.parse(res.responseText)
+    if (result("logspam").asString != ""){
+      logln(result("logspam").asString)
     }
-    if(result.success.asInstanceOf[js.Boolean]){
-      log(green("Success"))
-      logln()
-      ""+result.code
-    }else{
-      log(red("Failure"))
-      throw new Exception("Compilation Failed")
-    }
+    if(result("success").asBoolean) log(green("Success"))
+    else log(red("Failure"))
+    logln()
+
+    result.get("code").map(_.asString)
   }
 
   def complete(): Unit = async {
@@ -125,28 +109,28 @@ class Client(){
   def export(): Unit = async {
     logln("Exporting...")
     val source = editor.sess.getValue().asInstanceOf[String]
-    val compiled = await(compile("/optimize"))
-    Util.Form.post("/export",
-      "source" -> source,
-      "compiled" -> compiled
-    )
+    val compiled = await(compile(editor.code, "/optimize"))
+    compiled.foreach{ code =>
+      Util.Form.post("/export",
+        "source" -> source,
+        "compiled" -> code
+      )
+    }
   }
 
   def save(): Unit = async{
-    await(compile("/optimize"))
+    await(compile(editor.code, "/optimize"))
     val code = editor.sess.getValue().asInstanceOf[String]
     val res = await(Ajax.post("https://api.github.com/gists",
-      data = js.JSON.stringify(
-        lit(
-          description = "Scala.jsFiddle gist",
-          public = true,
-          files = js.Dictionary(
-            ("Main.scala": js.String) -> lit(
-              content = code
-            )
+      data = JsVal.obj(
+        "description" -> "Scala.jsFiddle gist",
+        "public" -> true,
+        "files" -> JsVal.obj(
+          "Main.scala" -> JsVal.obj(
+            "content" -> code
           )
         )
-      )
+      ).asString
     ))
     val result = js.JSON.parse(res.responseText)
     val resultId = result.id
@@ -183,14 +167,15 @@ object Client{
       val src = await(load(gistId, fileName))
       val client = new Client()
       client.editor.sess.setValue(src)
-      client.command.update()
+      client.command.update(src)
     }
   }
 
   @JSExport
   def importMain(): Unit = {
     clear()
-    new Client().command.update()
+    val client = new Client()
+    client.command.update(client.editor.code)
   }
 
   @JSExport
@@ -222,12 +207,12 @@ object Client{
       a(href:=gistUrl)(gistUrl),
       "..."
     )
+
     val res = await(Ajax.get("https://api.github.com/gists/" + gistId))
-    val result = js.JSON.parse(res.responseText)
-    val allFiles = result.files.asInstanceOf[js.Dictionary[js.Dynamic]]
-    val mainFile = allFiles(file.getOrElse(""): String)
-    val firstFile = allFiles(js.Object.keys(allFiles)(0).toString)
-    (if (!mainFile.isInstanceOf[js.Undefined]) mainFile else firstFile).selectDynamic("content").toString
+    val result = JsVal(js.JSON.parse(res.responseText))
+    val mainFile = result("files").get(file.getOrElse(""))
+    val firstFile = result("files").values(0)
+    mainFile.getOrElse(firstFile)("content").asString
   }.recover{ case e =>
     logln(red(s"Loading failed with $e,"))
     e.printStackTrace()

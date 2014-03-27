@@ -17,9 +17,10 @@ object Editor{
   }
 }
 class Editor(autocompleted: Var[Option[Completer]], bindings: Seq[(String, String, () => Any)]){
-  def aceDoc = editor.getSession().getDocument()
-  def sess = editor.getSession()
 
+  def sess = editor.getSession()
+  def aceDoc = sess.getDocument()
+  def code = sess.getValue().asInstanceOf[String]
   def getRowCol = {
     val Seq(newRow, newColumn) = Seq(
       editor.getCursorPosition().row,
