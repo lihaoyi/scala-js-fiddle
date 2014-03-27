@@ -16,7 +16,7 @@ libraryDependencies ++= Seq(
   "com.scalatags" % "scalatags_2.10" % "0.2.4-JS",
   "com.scalarx" % "scalarx_2.10" % "0.2.3-JS",
   "org.scala-lang.modules.scalajs" %% "scalajs-jquery" % "0.3",
-  "org.scala-lang.modules" %% "scala-async" % "0.9.0-M4" % "provided",
+  "org.scala-lang.modules" %% "scala-async" % "0.9.0" % "provided",
   "com.lihaoyi" %% "acyclic" % "0.1.1" % "provided"
 )
 

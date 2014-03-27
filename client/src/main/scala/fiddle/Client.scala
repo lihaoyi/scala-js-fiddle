@@ -6,7 +6,7 @@ import org.scalajs.dom
 import collection.mutable
 import scalatags.{HtmlTag, Modifier, Tags2}
 import scala.concurrent.{Promise, Future}
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.runNow
 import scala.async.Async.{async, await}
 import scalatags.all._
 import scalatags._
@@ -16,27 +16,57 @@ import org.scalajs.dom.extensions.Ajax
 import Client.fiddleUrl
 import scala.Some
 
+class Cell[T](){
+  var value: Promise[T] = null
+  def apply(): Future[T] = {
+    value = Promise[T]
+    value.future
+  }
+  def update(t: T) = {
+    if (!value.isCompleted) value.success(t)
+  }
+}
 class Client(){
   import Page._
 
   val autocompleted: Var[Option[Completer]] = Var(None)
 
-  lazy val extDeps = Ajax.post("/extdeps").map(_.responseText)
+  val c = new Cell[Unit]()
 
-  lazy val evalExtDeps = extDeps.map(x => js.eval(x))
+  def exec(s: String) = {
+    Client.clear()
+    js.eval(s)
+  }
+
+  var compileEndpoint = "/preoptimize"
+  var extdeps = ""
+  lazy val extdepsLoop = async{
+    extdeps = await(Ajax.post("/extdeps")).responseText
+    compileEndpoint = "/compile"
+  }
+
+  val compilationLoop = async{
+    await(c())
+    exec(await(compile("/optimize")))
+    while(true){
+      await(c())
+      js.eval(extdeps)
+      extdeps = ""
+      exec(await(compile(compileEndpoint)))
+      extdepsLoop
+    }
+  }.recover{ case e =>
+    logln(red(s"failed with $e,"))
+    e.printStackTrace()
+    ""
+  }
 
   val editor = new Editor(autocompleted, Seq(
     ("Compile", "Enter", () => async{
-      if (!extDeps.isCompleted) {
-        val res = await(compile("/preoptimize"))
-        Client.clear()
-        js.eval(res)
-      } else {
-        val res = await(compile("/compile"))
-        Client.clear()
-        evalExtDeps
-        js.eval(res)
-      }
+      c.update()
+    }.recover{ case e =>
+      println("fail "+ e)
+      e.printStackTrace()
     }),
     ("Save", "S", save _),
     ("Export", "E", export _),
@@ -156,27 +186,23 @@ object Client{
       case Seq(g) => (g, None)
       case Seq(g, f) => (g, Some(f))
     }
+
     async{
-      val client = new Client()
       val src = await(load(gistId, fileName))
+      val client = new Client()
       client.editor.sess.setValue(src)
-      val compiled = await(client.compile("/optimize"))
-      clear()
-      js.eval(compiled)
-    }.recover{ case e =>
-      println("DIED "+ e)
-      e.printStackTrace()
+      client.c.update()
     }
   }
 
   @JSExport
-  def importMain() = {
+  def importMain(): Unit = {
     clear()
-    new Client()
+    new Client().c.update()
   }
 
   @JSExport
-  def exportMain() = {
+  def exportMain(): Unit = {
     clear()
     val editor = Editor.init
     logln("- Code snippet exported from ", a(href:=fiddleUrl, fiddleUrl))

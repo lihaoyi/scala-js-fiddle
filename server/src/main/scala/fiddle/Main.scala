@@ -81,7 +81,7 @@ object Main extends SimpleRoutingApp {
             } ~
             path("extdeps"){
               complete{
-                Compiler.jsFiles.values.mkString("\n")
+                Compiler.packageJS()
               }
             } ~
             path("export"){
@@ -125,7 +125,7 @@ object Main extends SimpleRoutingApp {
       )
     }
   }
-  def funcWrap(s: String) = s"(function(){ $s; ScalaJSExample().main()}).call(window)"
+  def funcWrap(s: String) = s"(function(){ $s; ScalaJSExample().main(); console.log('running')}).call(window)"
   def compileStuff(ctx: RequestContext, processor: Seq[(String, String)] => String): Unit = {
 
     val output = mutable.Buffer.empty[String]

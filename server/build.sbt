@@ -18,10 +18,10 @@ libraryDependencies ++= Seq(
   "io.spray" % "spray-caching" % "1.3.1",
   "io.spray" % "spray-httpx" % "1.3.1",
   "io.spray" % "spray-routing" % "1.3.1",
-  "org.scala-lang.modules.scalajs" %% "scalajs-compiler" % "0.4.1",
+  "org.scala-lang.modules.scalajs" %% "scalajs-compiler" % "0.4.2-SNAPSHOT",
   "com.typesafe.play" %% "play-json" % "2.2.2",
-  "org.scala-lang.modules.scalajs" %% "scalajs-tools" % "0.4.1",
-  "org.scala-lang.modules" %% "scala-async" % "0.9.0-M4" % "provided",
+  "org.scala-lang.modules.scalajs" %% "scalajs-tools" % "0.4.2-SNAPSHOT",
+  "org.scala-lang.modules" %% "scala-async" % "0.9.0" % "provided",
   "com.scalatags" % "scalatags_2.10" % "0.2.4",
   "com.lihaoyi" %% "acyclic" % "0.1.1" % "provided"
 )

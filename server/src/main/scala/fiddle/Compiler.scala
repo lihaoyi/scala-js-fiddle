@@ -17,6 +17,7 @@ import scala.io.Source
 import scala.scalajs.tools.optimizer.{ScalaJSClosureOptimizer, ScalaJSOptimizer}
 import scala.scalajs.tools.io.{VirtualScalaJSClassfile, VirtualFile, VirtualJSFile}
 import scala.scalajs.tools.logging.Level
+import scala.scalajs.tools.classpath.ScalaJSClasspathEntries
 
 object Compiler{
 
@@ -148,27 +149,44 @@ object Compiler{
     if (vd.iterator.isEmpty) None
     else Some(vd.iterator.toSeq)
   }
+  def packageJS() = {
+    import scala.scalajs.tools.packager.ScalaJSPackager
+    val packager = new ScalaJSPackager
+    val stringer = new StringWriter()
+    val printer = new PrintWriter(stringer)
+    packager.packageScalaJS(
+      ScalaJSPackager.Inputs(prepClasspath(Nil)),
+      ScalaJSPackager.OutputConfig("extdeps.js", printer, None),
+      IgnoreLogger
+    )
+    stringer.toString
+  }
+  def prepClasspath(preppedUserFiles: Seq[VirtualScalaJSClassfile]) = {
+    ScalaJSClasspathEntries(
+      new VirtualJSFile {
+        def name = "scalajs-corejslib.js"
+        def content = jsFiles("scalajs-corejslib.js")
+      },
+      Seq(
+        new VirtualFile {
+          def name = "javalangString.sjsinfo"
+          def content = jsInfoFiles("javalangString.sjsinfo")
+        },
+        new VirtualFile {
+          def name = "javalangObject.sjsinfo"
+          def content = jsInfoFiles("javalangObject.sjsinfo")
+        }
+      ),
+      preppedLibraryFiles ++ preppedUserFiles
+    )
+  }
   def deadCodeElimination(userFiles: Seq[(String, String)]) = {
 
     val (_, _, preppedUserFiles) = prep(userFiles)
 
     val res = new ScalaJSOptimizer().optimize(
       ScalaJSOptimizer.Inputs(
-        new VirtualJSFile {
-          def name = "scalajs-corejslib.js"
-          def content = jsFiles("scalajs-corejslib.js")
-        },
-        Seq(
-          new VirtualFile {
-            def name = "javalangString.sjsinfo"
-            def content = jsInfoFiles("javalangString.sjsinfo")
-          },
-          new VirtualFile {
-            def name = "javalangObject.sjsinfo"
-            def content = jsInfoFiles("javalangObject.sjsinfo")
-          }
-        ),
-        preppedLibraryFiles ++ preppedUserFiles
+        prepClasspath(preppedUserFiles)
       ),
       ScalaJSOptimizer.OutputConfig("output.js"),
       Compiler.IgnoreLogger
