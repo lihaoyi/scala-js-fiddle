@@ -31,7 +31,7 @@ class Client(){
 
   val autocompleted: Var[Option[Completer]] = Var(None)
 
-  val c = new Cell[Unit]()
+  val command = new Cell[Unit]()
 
   def exec(s: String) = {
     Client.clear()
@@ -40,37 +40,29 @@ class Client(){
 
   var compileEndpoint = "/preoptimize"
   var extdeps = ""
+
   lazy val extdepsLoop = async{
     extdeps = await(Ajax.post("/extdeps")).responseText
     compileEndpoint = "/compile"
   }
 
   val compilationLoop = async{
-    await(c())
+    await(command())
     exec(await(compile("/optimize")))
     while(true){
-      await(c())
+      await(command())
       js.eval(extdeps)
       extdeps = ""
       exec(await(compile(compileEndpoint)))
       extdepsLoop
     }
-  }.recover{ case e =>
-    logln(red(s"failed with $e,"))
-    e.printStackTrace()
-    ""
   }
 
   val editor = new Editor(autocompleted, Seq(
-    ("Compile", "Enter", () => async{
-      c.update()
-    }.recover{ case e =>
-      println("fail "+ e)
-      e.printStackTrace()
-    }),
-    ("Save", "S", save _),
-    ("Export", "E", export _),
-    ("Complete", "`", complete _)
+    ("Compile", "Enter", () => command.update()),
+    ("Save", "S", save),
+    ("Export", "E", export),
+    ("Complete", "`", complete)
   ))
 
   logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-`"), " for autocomplete.")
@@ -191,14 +183,14 @@ object Client{
       val src = await(load(gistId, fileName))
       val client = new Client()
       client.editor.sess.setValue(src)
-      client.c.update()
+      client.command.update()
     }
   }
 
   @JSExport
   def importMain(): Unit = {
     clear()
-    new Client().c.update()
+    new Client().command.update()
   }
 
   @JSExport
