@@ -15,10 +15,18 @@ object Util {
     val parser = new dom.DOMParser
     dom.document.adoptNode(
       parser.parseFromString(s, "text/html").documentElement
-    ).lastChild.lastChild
+    ).lastChild.lastChild // double lastchild to go from html -> body -> thing
   }
+  /**
+   * Gets the element from the given ID and casts it,
+   * shortening that common pattern
+   */
   def getElem[T](id: String) = dom.document.getElementById(id).asInstanceOf[T]
 
+  /**
+   * Fakes a form submit, the only way that
+   * you can do a HTTP request + navigation
+   */
   object Form{
     def post(path: String, args: (String, String)*): Unit = {
       ajax("post", path, args:_*)

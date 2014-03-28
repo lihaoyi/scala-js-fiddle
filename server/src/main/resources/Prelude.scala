@@ -1,10 +1,10 @@
 import scala.scalajs.js.annotation.{JSName, JSExport}
 @JSName("Page2")
 object Page extends scalajs.js.Object{
-  def println(s: String): Unit = ???
-  def renderln(s: String): Unit = ???
-  def print(s: String): Unit = ???
-  def render(s: String): Unit = ???
+  def println(s: String*): Unit = ???
+  def renderln(s: String*): Unit = ???
+  def print(s: String*): Unit = ???
+  def render(s: String*): Unit = ???
   def clear(): Unit = ???
   def scroll(px: Int): Unit = ???
   def output: this.type = ???

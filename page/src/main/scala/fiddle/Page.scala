@@ -31,23 +31,27 @@ object Page{
   def source = Util.getElem[dom.HTMLDivElement]("source")
 
   @JSExport
-  def println(s: String) = {
-    renderln(div(s).toString)
+  def println(ss: String*) = {
+    renderln(div(ss).toString)
   }
 
   @JSExport
-  def print(s: String) = {
-    output.appendChild(dom.document.createTextNode(s))
+  def print(ss: String*) = {
+    for (s <- ss){
+      output.appendChild(dom.document.createTextNode(s))
+    }
     output.scrollTop = output.scrollHeight - output.clientHeight
   }
 
   @JSExport
-  def renderln(s: String) = {
-    render(div(raw(s)).toString)
+  def renderln(ss: String*) = {
+    render(div(ss.map(raw)).toString)
   }
   @JSExport
-  def render(s: String) = {
-    output.appendChild(Util.createDom(s))
+  def render(ss: String*) = {
+    for (s <- ss){
+      output.appendChild(Util.createDom(s))
+    }
     output.scrollTop = output.scrollHeight - output.clientHeight
   }
   @JSExport
