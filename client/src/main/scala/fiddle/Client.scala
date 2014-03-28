@@ -116,8 +116,7 @@ class Client(){
 
   def export(): Unit = task*async {
     logln("Exporting...")
-    val compiled = await(compile(editor.code, "/optimize"))
-    compiled.foreach{ code =>
+    await(compile(editor.code, "/optimize")).foreach{ code =>
       Util.Form.post("/export",
         "source" -> editor.code,
         "compiled" -> code
@@ -138,9 +137,8 @@ class Client(){
     ).toString()
 
     val res = await(Ajax.post("https://api.github.com/gists", data = data))
-    val result = js.JSON.parse(res.responseText)
-    val resultId = result.id
-    Util.Form.get("/gist/" + resultId)
+    val result = JsVal.parse(res.responseText)
+    Util.Form.get("/gist/" + result("id"))
   }
 }
 
@@ -150,7 +148,7 @@ object Client{
   import Page.{canvas, sandbox, logln, red, blue, green}
 
   def clear() = {
-    for(i <- 0 until 1000){
+    for(i <- 0 until 10000){
       dom.clearInterval(i)
       dom.clearTimeout(i)
     }
@@ -178,7 +176,6 @@ object Client{
     val client = new Client()
     client.command.update("")
   }
-
 
   def load(gistId: String, file: Option[String]): Future[String] = async {
     val gistUrl = "https://gist.github.com/" + gistId

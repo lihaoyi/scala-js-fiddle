@@ -23,11 +23,8 @@ object Page{
   def canvas = Util.getElem[dom.HTMLCanvasElement]("canvas")
   @JSExport
   def renderer = canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
-
   def output = Util.getElem[dom.HTMLDivElement]("output")
-
   def logspam = Util.getElem[dom.HTMLPreElement]("logspam")
-
   def source = Util.getElem[dom.HTMLDivElement]("source")
 
   @JSExport
@@ -37,9 +34,7 @@ object Page{
 
   @JSExport
   def print(ss: String*) = {
-    for (s <- ss){
-      output.appendChild(dom.document.createTextNode(s))
-    }
+    for (s <- ss) output.appendChild(dom.document.createTextNode(s))
     output.scrollTop = output.scrollHeight - output.clientHeight
   }
 
@@ -49,17 +44,17 @@ object Page{
   }
   @JSExport
   def render(ss: String*) = {
-    for (s <- ss){
-      output.appendChild(Util.createDom(s))
-    }
+    for (s <- ss) output.appendChild(Util.createDom(s))
     output.scrollTop = output.scrollHeight - output.clientHeight
   }
+
   @JSExport
   def clear() = {
     output.innerHTML = ""
     canvas.height = sandbox.clientHeight
     canvas.width = sandbox.clientWidth
   }
+
   @JSExport
   def scroll(px: Int) = {
     output.scrollTop = output.scrollTop + px

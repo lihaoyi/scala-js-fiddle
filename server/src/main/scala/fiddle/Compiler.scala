@@ -13,6 +13,7 @@ import scala.concurrent.Future
 import scala.reflect.internal.util.{BatchSourceFile, OffsetPosition}
 import scala.tools.nsc.interactive.Response
 import java.util.zip.ZipInputStream
+import scala.scalajs.tools.packager.ScalaJSPackager
 import scala.io.Source
 import scala.scalajs.tools.optimizer.{ScalaJSClosureOptimizer, ScalaJSOptimizer}
 import scala.scalajs.tools.io.{VirtualScalaJSClassfile, VirtualFile, VirtualJSFile}
@@ -145,14 +146,33 @@ object Compiler{
     if (vd.iterator.isEmpty) None
     else Some(vd.iterator.toSeq)
   }
-  def extdeps () = {
-    import scala.scalajs.tools.packager.ScalaJSPackager
+
+  def packageJS(cp: ScalaJSClasspathEntries) = {
     val packager = new ScalaJSPackager
     val stringer = new StringWriter()
     val printer = new PrintWriter(stringer)
 
     packager.packageScalaJS(
-      ScalaJSPackager.Inputs(classPath),
+      ScalaJSPackager.Inputs(cp),
+      ScalaJSPackager.OutputConfig("extdeps.js", printer, None),
+      IgnoreLogger
+    )
+    stringer.toString
+  }
+  def packageUserFiles(userFiles: Seq[(String, String)]) = {
+    val packager = new ScalaJSPackager
+    val stringer = new StringWriter()
+    val printer = new PrintWriter(stringer)
+    val (_, _, preppedUserFiles) = prep(userFiles)
+    packager.packageScalaJS(
+      ScalaJSPackager.Inputs(
+        ScalaJSClasspathEntries(
+          VirtualJSFile.empty("scalajs-corejslib.js"),
+          Nil,
+          preppedUserFiles,
+          Nil
+        )
+      ),
       ScalaJSPackager.OutputConfig("extdeps.js", printer, None),
       IgnoreLogger
     )

@@ -67,18 +67,12 @@ object Main extends SimpleRoutingApp {
                   )
                 }
               } ~
-              pathPrefix("js") {
-                getFromResourceDirectory("..")
-              } ~
-              pathPrefix("favicon.ico") {
-                getFromResource("favicon.ico")
-              } ~
               getFromResourceDirectory("")
             }
           } ~
           post {
             path("compile"){
-              compileStuff(_, x => funcWrap(x.filter(_._1.endsWith(".js")).map(_._2).mkString("\n")))
+              compileStuff(_, Compiler.packageUserFiles _ andThen funcWrap)
             } ~
             path("optimize"){
               compileStuff(_, Compiler.optimize _ andThen funcWrap)
@@ -88,17 +82,17 @@ object Main extends SimpleRoutingApp {
             } ~
             path("extdeps"){
               complete{
-                Compiler.extdeps()
+                Compiler.packageJS(Compiler.classPath)
               }
             } ~
             path("export"){
               formFields("compiled", "source"){
-                renderCode(_, "/page-opt.js", _, "Page().exportMain()", false)
+                renderCode(_, "/page-opt.js", _, "Page().exportMain()", analytics = false)
               }
             } ~
             path("import"){
               formFields("compiled", "source"){
-                renderCode(_, "/client-opt.js", _, "Client().importMain()", true)
+                renderCode(_, "/client-opt.js", _, "Client().importMain()", analytics = true)
               }
             } ~
             path("complete" / Segment / IntNumber){

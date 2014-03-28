@@ -2,6 +2,12 @@ package fiddle
 import scala.reflect.macros.Context
 import scala.language.experimental.macros
 
+/**
+ * Macro-powered print/println/render/renderln that takes Any* and stringifies
+ * all arguments to String* before handing them over the equivalent Page.XXX,
+ * since Page.XXX is separately compiled and optimized and only primitive JS
+ * values can be reliably passed in.
+ */
 object Macros {
 
   def doPrint(s: String)(c: Context)(exprs: c.Expr[Any]*): c.Expr[Unit] = {
