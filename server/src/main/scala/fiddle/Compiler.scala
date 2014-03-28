@@ -22,16 +22,18 @@ import scala.scalajs.tools.classpath.ScalaJSClasspathEntries
 object Compiler{
 
   val validJars = Seq(
-    "/classpath/jars/org.scala-lang.modules.scalajs/scalajs-library_2.10/scalajs-library_2.10-0.4.1.jar",
-    "/classpath/jars/org.scala-lang.modules.scalajs/scalajs-dom_2.10/scalajs-dom_2.10-0.3.jar",
-    "/classpath/jars/com.scalatags/scalatags_2.10/scalatags_2.10-0.2.4-JS.jar",
-    "/classpath/jars/com.scalarx/scalarx_2.10/scalarx_2.10-0.2.3-JS.jar",
+    "/classpath/scalajs-library_2.10-0.4.2-SNAPSHOT.jar",
+    "/classpath/scalajs-dom_2.10-0.3.jar",
+    "/classpath/scalatags_2.10-0.2.4-JS.jar",
+    "/classpath/scalarx_2.10-0.2.3-JS.jar",
     "/page_2.10-0.1-SNAPSHOT.jar"
   )
 
   val classPath = {
     val builder = new ScalaJSClasspathEntries.Builder 
-    for( name <- Compiler.validJars){
+    for(name <- Compiler.validJars){
+      val stream = getClass.getResourceAsStream(name)
+      assert(stream != null, s"stream for $name is null")
       ScalaJSClasspathEntries.readEntriesInJar(
         builder,
         getClass.getResourceAsStream(name)

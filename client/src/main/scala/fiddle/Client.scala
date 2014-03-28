@@ -16,7 +16,7 @@ import scala.Some
 import JsVal.jsVal2jsAny
 
 class Client(){
-  import Page._
+  import Page.{log, logln, red, blue, green}
 
   val autocompleted: Var[Option[Completer]] = Var(None)
 

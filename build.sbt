@@ -9,8 +9,10 @@ val server = project.in(file("server"))
 
 SbtStartScript.stage in Compile := Unit
 
-(crossTarget in (client, Compile)) := (classDirectory in (server, Compile)).value
+(crossTarget in (client, Compile, optimizeJS)) := (classDirectory in (server, Compile)).value
 
-(crossTarget in (page, Compile)) := (classDirectory in (server, Compile)).value
+(crossTarget in (page, Compile, packageBin)) := (classDirectory in (server, Compile)).value
+
+(crossTarget in (page, Compile, optimizeJS)) := (classDirectory in (server, Compile)).value
 
 scalaVersion := "2.10.3"

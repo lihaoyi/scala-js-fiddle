@@ -8,7 +8,7 @@ resolvers += Resolver.url("scala-js-snapshots",
 
 resolvers += "typesafe" at "http://repo.typesafe.com/typesafe/releases/"
 
-addSbtPlugin("org.scala-lang.modules.scalajs" % "scalajs-sbt-plugin" % "0.4.1")
+addSbtPlugin("org.scala-lang.modules.scalajs" % "scalajs-sbt-plugin" % "0.4.2-SNAPSHOT")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.10.0")
 

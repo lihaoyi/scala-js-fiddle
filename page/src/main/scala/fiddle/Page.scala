@@ -18,15 +18,18 @@ object Page{
   def blue = span(color:="#aaaaff")
   def green = span(color:="#aaffaa")
 
-  def sandbox = js.Dynamic.global.sandbox.asInstanceOf[dom.HTMLDivElement]
+  def sandbox = Util.getElem[dom.HTMLDivElement]("sandbox")
   @JSExport
-  def canvas = js.Dynamic.global.canvas.asInstanceOf[dom.HTMLCanvasElement]
+  def canvas = Util.getElem[dom.HTMLCanvasElement]("canvas")
   @JSExport
   def renderer = canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
 
-  def output = js.Dynamic.global.output.asInstanceOf[dom.HTMLDivElement]
+  def output = Util.getElem[dom.HTMLDivElement]("output")
 
-  def logspam = js.Dynamic.global.logspam.asInstanceOf[dom.HTMLPreElement]
+  def logspam = Util.getElem[dom.HTMLPreElement]("logspam")
+
+  def source = Util.getElem[dom.HTMLDivElement]("source")
+
   @JSExport
   def println(s: String) = {
     renderln(div(s).toString)
@@ -95,6 +98,7 @@ object Page{
     val editor = global.ace.edit("editor")
     editor.setTheme("ace/theme/twilight")
     editor.getSession().setMode("ace/mode/scala")
+    editor.getSession().setValue(source.textContent)
     editor.renderer.setShowGutter(false)
     editor
   }

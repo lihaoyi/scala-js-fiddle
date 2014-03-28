@@ -17,6 +17,7 @@ object Util {
       parser.parseFromString(s, "text/html").documentElement
     ).lastChild.lastChild
   }
+  def getElem[T](id: String) = dom.document.getElementById(id).asInstanceOf[T]
 
   object Form{
     def post(path: String, args: (String, String)*): Unit = {

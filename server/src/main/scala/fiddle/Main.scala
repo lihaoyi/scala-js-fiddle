@@ -93,12 +93,12 @@ object Main extends SimpleRoutingApp {
             } ~
             path("export"){
               formFields("compiled", "source"){
-                renderCode(_, "/page-opt.js", _, "Page().exportMain()")
+                renderCode(_, "/page-opt.js", _, "Page().exportMain()", false)
               }
             } ~
             path("import"){
               formFields("compiled", "source"){
-                renderCode(_, "/client-opt.js", _, "Client().importMain()")
+                renderCode(_, "/client-opt.js", _, "Client().importMain()", true)
               }
             } ~
             path("complete" / Segment / IntNumber){
@@ -109,12 +109,12 @@ object Main extends SimpleRoutingApp {
       }
     }
   }
-  def renderCode(compiled: String, srcFile: String, source: String, bootFunc: String) = {
+  def renderCode(compiled: String, srcFile: String, source: String, bootFunc: String, analytics: Boolean) = {
 
     complete{
       HttpEntity(
         MediaTypes.`text/html`,
-        Static.page(s"$bootFunc", srcFile, source, compiled)
+        Static.page(s"$bootFunc", srcFile, source, compiled, analytics)
       )
     }
   }
