@@ -2,14 +2,7 @@ import scala.scalajs.sbtplugin.ScalaJSPlugin._
 import ScalaJSKeys._
 import com.typesafe.sbt.SbtStartScript
 
-
 scalaJSSettings
-
-name := "Example"
-
-version := "0.1-SNAPSHOT"
-
-scalaVersion := "2.10.3"
 
 libraryDependencies ++= Seq(
   "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.3",

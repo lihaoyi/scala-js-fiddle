@@ -26,7 +26,7 @@ object Compiler{
     "/classpath/jars/org.scala-lang.modules.scalajs/scalajs-dom_2.10/scalajs-dom_2.10-0.3.jar",
     "/classpath/jars/com.scalatags/scalatags_2.10/scalatags_2.10-0.2.4-JS.jar",
     "/classpath/jars/com.scalarx/scalarx_2.10/scalarx_2.10-0.2.3-JS.jar",
-    "/macros_2.10-0.1-SNAPSHOT.jar"
+    "/page_2.10-0.1-SNAPSHOT.jar"
   )
 
   val classPath = {

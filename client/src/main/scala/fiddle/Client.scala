@@ -11,7 +11,7 @@ import scalatags._
 import rx._
 import scala.scalajs.js.annotation.JSExport
 import org.scalajs.dom.extensions.Ajax
-import Client.fiddleUrl
+import Page.fiddleUrl
 import scala.Some
 import JsVal.jsVal2jsAny
 
@@ -30,16 +30,12 @@ class Client(){
   var compileEndpoint = "/preoptimize"
   var extdeps = ""
 
-  lazy val extdepsLoop = async{
+  lazy val extdepsLoop = task*async{
     extdeps = await(Ajax.post("/extdeps")).responseText
     compileEndpoint = "/compile"
-  }.recover{ case e =>
-    logln(red(s"B failed with $e,"))
-    e.printStackTrace()
-    ""
   }
 
-  val compilationLoop = async{
+  val compilationLoop = task*async{
     val code = await(command())
 
     await(compile(code, "/optimize")).foreach(exec)
@@ -51,10 +47,6 @@ class Client(){
       compiled.foreach(exec)
       extdepsLoop
     }
-  }.recover{ case e =>
-    logln(red(s"C failed with $e,"))
-    e.printStackTrace()
-    ""
   }
 
   val editor: Editor = new Editor(autocompleted, Seq(
@@ -81,10 +73,6 @@ class Client(){
       logln()
       result.get("code").map(_.asString)
     }
-  }.recover{ case e =>
-    logln(red(s"D failed with $e,"))
-    e.printStackTrace()
-    None
   }
 
 
@@ -126,7 +114,7 @@ class Client(){
     ""
   }
 
-  def export(): Unit = async {
+  def export(): Unit = task*async {
     logln("Exporting...")
     val compiled = await(compile(editor.code, "/optimize"))
     compiled.foreach{ code =>
@@ -135,13 +123,9 @@ class Client(){
         "compiled" -> code
       )
     }
-  }.recover{ case e =>
-    logln(red(s"F failed with $e,"))
-    e.printStackTrace()
-    ""
   }
 
-  def save(): Unit = async{
+  def save(): Unit = task*async{
     await(compile(editor.code, "/optimize"))
     val data = JsVal.obj(
       "description" -> "Scala.jsFiddle gist",
@@ -157,17 +141,13 @@ class Client(){
     val result = js.JSON.parse(res.responseText)
     val resultId = result.id
     Util.Form.get("/gist/" + resultId)
-  }.recover{ case e =>
-    logln(red(s"G failed with $e,"))
-    e.printStackTrace()
-    ""
   }
 }
 
 @JSExport
 object Client{
-  val fiddleUrl = "http://www.scala-js-fiddle.com"
-  import Page._
+
+  import Page.{canvas, sandbox, logln, red, blue, green}
 
   def clear() = {
     for(i <- 0 until 1000){
@@ -175,14 +155,12 @@ object Client{
       dom.clearTimeout(i)
     }
     Page.clear()
-    canvas.height = sandbox.clientHeight
-    canvas.width = sandbox.clientWidth
   }
 
   @JSExport
-  def gistMain(args: js.Array[String]): Unit = async{
+  def gistMain(args: js.Array[String]): Unit = task*async{
 
-    Editor.init
+    Page.initEditor
     val (gistId, fileName) = args.toSeq match{
       case Nil => ("9759723", Some("LandingPage.scala"))
       case Seq(g) => (g, None)
@@ -192,10 +170,6 @@ object Client{
     val client = new Client()
     client.editor.sess.setValue(src)
     client.command.update(src)
-  }.recover{ case e =>
-    logln(red(s"A failed with $e,"))
-    e.printStackTrace()
-    ""
   }
 
   @JSExport
@@ -205,24 +179,6 @@ object Client{
     client.command.update("")
   }
 
-  @JSExport
-  def exportMain(): Unit = {
-    dom.console.log("exportMain")
-    clear()
-    val editor = Editor.init
-    logln("- Code snippet exported from ", a(href:=fiddleUrl, fiddleUrl))
-    logln("- ", blue("Ctrl/Cmd-S"), " and select ", blue("Web Page, Complete"), " to save for offline use")
-    logln("- Click ", a(id:="editLink", href:="javascript:", "here"), " to edit a copy online")
-    dom.document
-      .getElementById("editLink")
-      .asInstanceOf[dom.HTMLAnchorElement]
-      .onclick = { (e: dom.MouseEvent) =>
-      Util.Form.post("http://localhost:8080/import",
-        "source" -> editor.getSession().getValue().toString,
-        "compiled" -> dom.document.getElementById("compiled").innerHTML
-      )
-    }
-  }
 
   def load(gistId: String, file: Option[String]): Future[String] = async {
     val gistUrl = "https://gist.github.com/" + gistId
@@ -241,9 +197,5 @@ object Client{
     val mainFile = result("files").get(file.getOrElse(""))
     val firstFile = result("files").values(0)
     mainFile.getOrElse(firstFile)("content").asString
-  }.recover{ case e =>
-    logln(red(s"Loading failed with $e,"))
-    e.printStackTrace()
-    ""
   }
 }

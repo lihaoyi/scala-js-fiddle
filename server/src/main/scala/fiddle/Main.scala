@@ -48,7 +48,10 @@ object Main extends SimpleRoutingApp {
                 complete{
                   HttpEntity(
                     MediaTypes.`text/html`,
-                    Static.page(s"Client().gistMain([])", "Loading gist...")
+                    Static.page(
+                      s"Client().gistMain([])",
+                      "/client-opt.js",
+                      "Loading gist...")
                   )
                 }
               } ~
@@ -56,7 +59,11 @@ object Main extends SimpleRoutingApp {
                 complete{
                   HttpEntity(
                     MediaTypes.`text/html`,
-                    Static.page(s"Client().gistMain(${JsArray(i.map(JsString)).toString()})", "Loading gist...")
+                    Static.page(
+                      s"Client().gistMain(${JsArray(i.map(JsString)).toString()})",
+                      "/client-opt.js",
+                      "Loading gist..."
+                    )
                   )
                 }
               } ~
@@ -86,12 +93,12 @@ object Main extends SimpleRoutingApp {
             } ~
             path("export"){
               formFields("compiled", "source"){
-                renderCode(_, _, "exportMain")
+                renderCode(_, "/page-opt.js", _, "Page().exportMain()")
               }
             } ~
             path("import"){
               formFields("compiled", "source"){
-                renderCode(_, _, "importMain")
+                renderCode(_, "/client-opt.js", _, "Client().importMain()")
               }
             } ~
             path("complete" / Segment / IntNumber){
@@ -102,12 +109,12 @@ object Main extends SimpleRoutingApp {
       }
     }
   }
-  def renderCode(compiled: String, source: String, bootFunc: String) = {
+  def renderCode(compiled: String, srcFile: String, source: String, bootFunc: String) = {
 
     complete{
       HttpEntity(
         MediaTypes.`text/html`,
-        Static.page(s"Client().$bootFunc()", source, compiled)
+        Static.page(s"$bootFunc", srcFile, source, compiled)
       )
     }
   }

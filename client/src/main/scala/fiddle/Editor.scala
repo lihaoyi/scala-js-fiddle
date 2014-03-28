@@ -7,15 +7,7 @@ import scala.Some
 import org.scalajs.dom
 import rx._
 import JsVal.jsVal2jsAny
-object Editor{
-  lazy val init: js.Dynamic = {
-    val editor = global.ace.edit("editor")
-    editor.setTheme("ace/theme/twilight")
-    editor.getSession().setMode("ace/mode/scala")
-    editor.renderer.setShowGutter(false)
-    editor
-  }
-}
+
 class Editor(autocompleted: Var[Option[Completer]], bindings: Seq[(String, String, () => Any)]){
 
   def sess = editor.getSession()
@@ -33,7 +25,7 @@ class Editor(autocompleted: Var[Option[Completer]], bindings: Seq[(String, Strin
                    .asInstanceOf[js.String]
 
   val editor: js.Dynamic = {
-    val editor = Editor.init
+    val editor = Page.initEditor
 
     for ((name, key, func) <- bindings){
       editor.commands.addCommand(JsVal.obj(

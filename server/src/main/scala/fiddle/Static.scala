@@ -5,7 +5,7 @@ import scalatags.all._
 object Static{
 
 
-  def page(arg: String, source: String = "", compiled: String = "") =
+  def page(arg: String, srcFile: String, source: String = "", compiled: String = "") =
     "<!DOCTYPE html>" + html(
       head(
         meta(charset:="utf-8"),
@@ -57,7 +57,7 @@ object Static{
 //        script(`type`:="text/javascript", src:="/example-extdeps.js"),
 //        script(`type`:="text/javascript", src:="/example-intdeps.js"),
 //        script(`type`:="text/javascript", src:="/example.js"),
-        script(`type`:="text/javascript", src:="/example-opt.js"),
+        script(`type`:="text/javascript", src:=srcFile),
         script(s"Page2=Page();", raw(arg)),
         script(id:="compiled", raw(compiled))
       )
