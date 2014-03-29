@@ -29,14 +29,14 @@ class Editor(bindings: Seq[(String, String, () => Any)],
                    .asInstanceOf[js.String]
 
   val editor: js.Dynamic = {
-    val editor = Page.initEditor
+    val editor = Editor.initEditor
 
     for ((name, key, func) <- bindings){
       editor.commands.addCommand(JsVal.obj(
         "name" -> name,
         "bindKey" -> JsVal.obj(
           "win" -> ("Ctrl-" + key),
-          "mac" -> ("Ctrl-" + key),
+          "mac" -> ("Cmd-" + key),
           "sender" -> "editor|cli"
         ),
         "exec" -> func
@@ -45,7 +45,7 @@ class Editor(bindings: Seq[(String, String, () => Any)],
 
     js.Dynamic.global.require("ace/ext/language_tools")
 
-    editor.setOptions(JsVal.obj("enableBasicAutocompletion" -> true));
+    editor.setOptions(JsVal.obj("enableBasicAutocompletion" -> true))
 
     editor.completers = JsVal.arr(JsVal.obj(
       "getCompletions" -> {(editor: Dyn, session: Dyn, pos: Dyn, prefix: Dyn, callback: Dyn) => task*async{
@@ -62,6 +62,20 @@ class Editor(bindings: Seq[(String, String, () => Any)],
     )).value
 
     editor.getSession().setTabSize(2)
+    editor
+  }
+}
+object Editor{
+  def initEditorIn(id: String) = {
+    val editor = global.ace.edit(id)
+    editor.setTheme("ace/theme/twilight")
+    editor.renderer.setShowGutter(false)
+    editor
+  }
+  lazy val initEditor: js.Dynamic = {
+    val editor = initEditorIn("editor")
+    editor.getSession().setMode("ace/mode/scala")
+    editor.getSession().setValue(Page.source.textContent)
     editor
   }
 }

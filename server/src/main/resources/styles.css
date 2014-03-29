@@ -61,3 +61,6 @@ html, body, #spinner-holder{
 #spinner-holder{
     display: table;
 }
+.ace-line{
+    white-space: nowrap;
+}

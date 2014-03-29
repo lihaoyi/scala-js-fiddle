@@ -73,11 +73,15 @@ object Page{
     logspam.scrollTop = logspam.scrollHeight - logspam.clientHeight
   }
 
+  val compiled = Util.getElem[dom.HTMLDivElement]("compiled").textContent
+
   @JSExport
   def exportMain(): Unit = {
     dom.console.log("exportMain")
     clear()
-    val editor = initEditor
+    val editor = Util.getElem[dom.HTMLDivElement]("editor")
+    js.Dynamic.global.require("ace")
+    editor.innerHTML = highlight(source.textContent, "ace/mode/scala")
 
     logln("- Code snippet exported from ", a(href:=fiddleUrl, fiddleUrl))
     logln("- ", blue("Ctrl/Cmd-S"), " and select ", blue("Web Page, Complete"), " to save for offline use")
@@ -87,21 +91,26 @@ object Page{
        .asInstanceOf[dom.HTMLAnchorElement]
        .onclick = { (e: dom.MouseEvent) =>
       Util.Form.post("http://localhost:8080/import",
-        "source" -> editor.getSession().getValue().toString,
-        "compiled" -> dom.document.getElementById("compiled").innerHTML
+        "source" -> source.textContent,
+        "compiled" -> compiled
       )
     }
+    js.eval(compiled)
   }
-  def initEditorIn(id: String) = {
-    val editor = global.ace.edit(id)
-    editor.setTheme("ace/theme/twilight")
-    editor.renderer.setShowGutter(false)
-    editor
-  }
-  lazy val initEditor: js.Dynamic = {
-    val editor = initEditorIn("editor")
-    editor.getSession().setMode("ace/mode/scala")
-    editor.getSession().setValue(source.textContent)
-    editor
+
+  def highlight(source: String, m: String): String = {
+    val highlighter = js.Dynamic.global.require("ace/ext/static_highlight")
+    val mode = js.Dynamic.global.require(m).Mode
+    val theme = js.Dynamic.global.require("ace/theme/twilight")
+    val dom =  js.Dynamic.global.require("ace/lib/dom")
+    val highlighted = highlighter.render(
+      source,
+      js.Dynamic.newInstance(mode)(),
+      theme,
+      1,
+      true
+    )
+    dom.importCssString(highlighted.css, "ace_highlight")
+    highlighted.html.toString
   }
 }

@@ -1,7 +1,7 @@
 package fiddle
 import acyclic.file
 import scala.scalajs.js
-import js.Dynamic.{literal => lit}
+import scala.scalajs.js.Dynamic.{literal => lit, _}
 import org.scalajs.dom
 import scala.concurrent.{Promise, Future}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.runNow
@@ -14,6 +14,8 @@ import org.scalajs.dom.extensions.Ajax
 import Page.fiddleUrl
 import scala.Some
 import JsVal.jsVal2jsAny
+import fiddle.Channel
+import scala.Some
 
 class Client(){
   import Page.{log, logln, red, blue, green}
@@ -50,9 +52,9 @@ class Client(){
   val editor: Editor = new Editor(Seq(
     ("Compile", "Enter", () => command.update(editor.code)),
     ("Save", "S", save),
-    ("Raw", "W", viewRaw),
+    ("Javascript", "J", viewJavascript),
     ("Export", "E", export)
-  ), () => complete())
+  ), complete)
 
   logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-`"), " for autocomplete.")
   logln("- Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
@@ -73,15 +75,10 @@ class Client(){
     }
   }
 
-  def viewRaw() = async {
-    val compiled = await(compile(editor.code, "/compile"))
-    compiled.foreach{c =>
-//      Client.clear()
-      Page.output.innerHTML = pre(id:="compiledCode", c).toString
-//      val ed = Page.initEditorIn("compiledCode")
-//      ed.getSession().setMode("ace/mode/javascript")
-      println("viewRaw compiled")
-      println(c)
+  def viewJavascript() = task*async {
+    await(compile(editor.code, "/compile")).foreach{ compiled  =>
+      Client.clear()
+      Page.output.innerHTML = Page.highlight(compiled , "ace/mode/javascript")
     }
   }
   def complete() = async {
@@ -130,7 +127,7 @@ class Client(){
 
     val res = await(Ajax.post("https://api.github.com/gists", data = data))
     val result = JsVal.parse(res.responseText)
-    Util.Form.get("/gist/" + result("id"))
+    Util.Form.get("/gist/" + result("id").asString)
   }
 }
 
@@ -150,7 +147,7 @@ object Client{
   @JSExport
   def gistMain(args: js.Array[String]): Unit = task*async{
 
-    Page.initEditor
+    Editor.initEditor
     val (gistId, fileName) = args.toSeq match{
       case Nil => ("9759723", Some("LandingPage.scala"))
       case Seq(g) => (g, None)
@@ -167,6 +164,7 @@ object Client{
     clear()
     val client = new Client()
     client.command.update("")
+    js.eval(Page.compiled)
   }
 
   def load(gistId: String, file: Option[String]): Future[String] = async {

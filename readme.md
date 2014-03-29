@@ -1,7 +1,7 @@
-Scala.jsFiddle
+Scala-Js-Fiddle
 ==============
 
-Source code for [www.scala-js-fiddle.com](http://www.scala-js-fiddle.com). To develop, install [sbt-revolver](https://github.com/spray/sbt-revolver) and run:
+Source code for [www.scala-js-fiddle.com](http://www.scala-js-fiddle.com). To develop, run:
 
 ```
 sbt "~; page/package; page/optimizeJS; server/re-start; client/optimizeJS"

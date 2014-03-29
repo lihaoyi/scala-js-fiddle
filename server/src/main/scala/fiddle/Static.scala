@@ -3,15 +3,23 @@ import acyclic.file
 import scalatags._
 import scalatags.all._
 object Static{
-
+  val aceFiles = Seq(
+    "/ace/ace.js",
+    "/ace/ext-language_tools.js",
+    "/ace/ext-static_highlight.js",
+    "/ace/mode-scala.js",
+    "/ace/theme-twilight.js"
+  )
 
   def page(arg: String, srcFiles: Seq[String], source: String = "", compiled: String = "", analytics: Boolean = true) =
     "<!DOCTYPE html>" + html(
       head(
         meta(charset:="utf-8"),
         Tags2.title("Scala-Js-Fiddle"),
-        script(src:="/ace/ace.js", `type`:="text/javascript", charset:="utf-8"),
-        script(src:="/ace/ext-language_tools.js", `type`:="text/javascript", charset:="utf-8"),
+
+        for(srcFile <- srcFiles ++ aceFiles) yield script(
+          `type`:="text/javascript", src:=srcFile
+        ),
         link(rel:="stylesheet", href:="/normalize.css"),
         link(rel:="stylesheet", href:="/styles.css"),
 
@@ -26,6 +34,7 @@ object Static{
               ga('send', 'pageview');
           """
         )) else ()
+
       ),
       body(
         div(id:="source", display:="none")(source),
@@ -55,13 +64,13 @@ object Static{
               )
             )
           )
-        ),
-        for(srcFile <- srcFiles) yield script(
-          `type`:="text/javascript", src:=srcFile
-        ),
-
-        script(s"Page2=Page();", raw(arg)),
-        script(id:="compiled", raw(compiled))
-      )
+        )
+      ),
+      div(
+        id:="compiled",
+        display:="none",
+        compiled
+      ),
+      script(raw(s"\nPage2=Page();\n$arg"))
     ).toString()
 }

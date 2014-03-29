@@ -30,7 +30,7 @@ import spray.http.HttpResponse
 import spray.http.CacheDirectives.`max-age`
 import spray.routing._
 
-object Main extends SimpleRoutingApp {
+object Server extends SimpleRoutingApp {
   implicit val system = ActorSystem()
   import system.dispatcher
 
@@ -39,7 +39,7 @@ object Main extends SimpleRoutingApp {
       case RequestContext(HttpRequest(_, uri, _, entity, _), _, _) => (uri, entity)
     }
 
-    val clientFiles = Seq("/client-preopt.js")
+    val clientFiles = Seq("/client-opt.js")
     val simpleCache = routeCache(maxCapacity = 1000)
     startServer("localhost", port = 8080) {
       cache(simpleCache) {
@@ -110,7 +110,7 @@ object Main extends SimpleRoutingApp {
     complete{
       HttpEntity(
         MediaTypes.`text/html`,
-        Static.page(s"$bootFunc", srcFiles, source, compiled, analytics)
+        Static.page(bootFunc, srcFiles, source, compiled, analytics)
       )
     }
   }
