@@ -50,6 +50,7 @@ class Client(){
   val editor: Editor = new Editor(Seq(
     ("Compile", "Enter", () => command.update(editor.code)),
     ("Save", "S", save),
+    ("Raw", "W", viewRaw),
     ("Export", "E", export)
   ), () => complete())
 
@@ -72,28 +73,37 @@ class Client(){
     }
   }
 
-
+  def viewRaw() = async {
+    val compiled = await(compile(editor.code, "/compile"))
+    compiled.foreach{c =>
+//      Client.clear()
+      Page.output.innerHTML = pre(id:="compiledCode", c).toString
+//      val ed = Page.initEditorIn("compiledCode")
+//      ed.getSession().setMode("ace/mode/javascript")
+      println("viewRaw compiled")
+      println(c)
+    }
+  }
   def complete() = async {
-
     log("Completing... ")
 
     val code = editor.sess.getValue().asInstanceOf[String]
-    val intOffset = code.split("\n")
-                        .take(editor.row)
-                        .map(_.length + 1)
-                        .sum + editor.column
+
+    val intOffset = editor.column + code.split("\n")
+                                        .take(editor.row)
+                                        .map(_.length + 1)
+                                        .sum
 
     val flag = if(code.take(intOffset).endsWith(".")) "member" else "scope"
-    println(code.take(intOffset))
-    println(editor.row + "\t" + editor.column)
-    println("complete flag " + flag)
-    val xhr = await(Ajax.post(
-      s"/complete/$flag/$intOffset",
-      code
-    ))
+
+
+    val xhr = await(Ajax.post(s"/complete/$flag/$intOffset", code))
     log("Done")
     logln()
-    js.JSON.parse(xhr.responseText).asInstanceOf[js.Array[String]].toSeq
+    js.JSON
+      .parse(xhr.responseText)
+      .asInstanceOf[js.Array[String]]
+      .toSeq
   }
 
   def export(): Unit = task*async {
@@ -172,7 +182,7 @@ object Client{
     )
 
     val res = await(Ajax.get("https://api.github.com/gists/" + gistId))
-    val result = JsVal(js.JSON.parse(res.responseText))
+    val result = JsVal.parse(res.responseText)
     val mainFile = result("files").get(file.getOrElse(""))
     val firstFile = result("files").values(0)
     mainFile.getOrElse(firstFile)("content").asString

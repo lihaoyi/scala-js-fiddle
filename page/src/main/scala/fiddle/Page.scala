@@ -92,13 +92,16 @@ object Page{
       )
     }
   }
-
-  lazy val initEditor: js.Dynamic = {
-    val editor = global.ace.edit("editor")
+  def initEditorIn(id: String) = {
+    val editor = global.ace.edit(id)
     editor.setTheme("ace/theme/twilight")
+    editor.renderer.setShowGutter(false)
+    editor
+  }
+  lazy val initEditor: js.Dynamic = {
+    val editor = initEditorIn("editor")
     editor.getSession().setMode("ace/mode/scala")
     editor.getSession().setValue(source.textContent)
-    editor.renderer.setShowGutter(false)
     editor
   }
 }

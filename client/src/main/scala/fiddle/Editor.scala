@@ -12,13 +12,16 @@ import org.scalajs.dom.extensions.KeyCode
 import scala.concurrent.Future
 import scala.async.Async.{async, await}
 
+/**
+ * Everything related to setting up the Ace editor to
+ * do exactly what we want.
+ */
 class Editor(bindings: Seq[(String, String, () => Any)],
              completions: () => Future[Seq[String]]){
 
   def sess = editor.getSession()
   def aceDoc = sess.getDocument()
   def code = sess.getValue().asInstanceOf[String]
-  println("Editor.<init>")
   def row = editor.getCursorPosition().row.asInstanceOf[js.Number].toInt
   def column= editor.getCursorPosition().column.asInstanceOf[js.Number].toInt
 
@@ -33,25 +36,30 @@ class Editor(bindings: Seq[(String, String, () => Any)],
         "name" -> name,
         "bindKey" -> JsVal.obj(
           "win" -> ("Ctrl-" + key),
-          "mac" -> ("Command-" + key),
+          "mac" -> ("Ctrl-" + key),
           "sender" -> "editor|cli"
         ),
         "exec" -> func
       ))
     }
-    val langTools = js.Dynamic.global.require("ace/ext/language_tools")
+
+    js.Dynamic.global.require("ace/ext/language_tools")
 
     editor.setOptions(JsVal.obj("enableBasicAutocompletion" -> true));
 
-    editor.completers = js.Array(lit(
-      getCompletions= (editor: Dyn, session: Dyn, pos: Dyn, prefix: Dyn, callback: Dyn) => task*async{
-
+    editor.completers = JsVal.arr(JsVal.obj(
+      "getCompletions" -> {(editor: Dyn, session: Dyn, pos: Dyn, prefix: Dyn, callback: Dyn) => task*async{
         val things = await(completions()).map(name =>
-          lit(name=name, value=name, score=10000000, meta="meta")
+          JsVal.obj(
+            "name" -> name,
+            "value" -> name,
+            "score" -> 10000000,
+            "meta" -> "meta"
+          )
         )
         callback(null, js.Array(things:_*))
-      }
-    ))
+      }}
+    )).value
 
     editor.getSession().setTabSize(2)
     editor

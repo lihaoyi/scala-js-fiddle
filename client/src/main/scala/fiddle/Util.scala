@@ -16,8 +16,7 @@ case class Channel[T](){
   }
 }
 
-class JsVal(val value: js.Dynamic) {
-
+class JsVal(val value: js.Dynamic){
   def get(name: String): Option[JsVal] = {
     (value.selectDynamic(name): js.Any) match {
       case _: js.Undefined => None

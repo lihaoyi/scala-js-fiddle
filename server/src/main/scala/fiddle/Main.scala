@@ -38,6 +38,8 @@ object Main extends SimpleRoutingApp {
     implicit val Default: CacheKeyer = CacheKeyer {
       case RequestContext(HttpRequest(_, uri, _, entity, _), _, _) => (uri, entity)
     }
+
+    val clientFiles = Seq("/client-preopt.js")
     val simpleCache = routeCache(maxCapacity = 1000)
     startServer("localhost", port = 8080) {
       cache(simpleCache) {
@@ -50,7 +52,7 @@ object Main extends SimpleRoutingApp {
                     MediaTypes.`text/html`,
                     Static.page(
                       s"Client().gistMain([])",
-                      "/client-opt.js",
+                      clientFiles,
                       "Loading gist...")
                   )
                 }
@@ -61,7 +63,7 @@ object Main extends SimpleRoutingApp {
                     MediaTypes.`text/html`,
                     Static.page(
                       s"Client().gistMain(${JsArray(i.map(JsString)).toString()})",
-                      "/client-opt.js",
+                      clientFiles,
                       "Loading gist..."
                     )
                   )
@@ -87,12 +89,12 @@ object Main extends SimpleRoutingApp {
             } ~
             path("export"){
               formFields("compiled", "source"){
-                renderCode(_, "/page-opt.js", _, "Page().exportMain()", analytics = false)
+                renderCode(_, Seq("/page-opt.js"), _, "Page().exportMain()", analytics = false)
               }
             } ~
             path("import"){
               formFields("compiled", "source"){
-                renderCode(_, "/client-opt.js", _, "Client().importMain()", analytics = true)
+                renderCode(_, clientFiles, _, "Client().importMain()", analytics = true)
               }
             } ~
             path("complete" / Segment / IntNumber){
@@ -103,12 +105,12 @@ object Main extends SimpleRoutingApp {
       }
     }
   }
-  def renderCode(compiled: String, srcFile: String, source: String, bootFunc: String, analytics: Boolean) = {
+  def renderCode(compiled: String, srcFiles: Seq[String], source: String, bootFunc: String, analytics: Boolean) = {
 
     complete{
       HttpEntity(
         MediaTypes.`text/html`,
-        Static.page(s"$bootFunc", srcFile, source, compiled, analytics)
+        Static.page(s"$bootFunc", srcFiles, source, compiled, analytics)
       )
     }
   }

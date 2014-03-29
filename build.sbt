@@ -11,6 +11,8 @@ SbtStartScript.stage in Compile := Unit
 
 (crossTarget in (client, Compile, optimizeJS)) := (classDirectory in (server, Compile)).value
 
+(crossTarget in (client, Compile, preoptimizeJS)) := (classDirectory in (server, Compile)).value
+
 (crossTarget in (page, Compile, packageBin)) := (classDirectory in (server, Compile)).value
 
 (crossTarget in (page, Compile, optimizeJS)) := (classDirectory in (server, Compile)).value
