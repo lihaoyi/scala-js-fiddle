@@ -11,6 +11,7 @@ object Static{
         meta(charset:="utf-8"),
         Tags2.title("Scala-Js-Fiddle"),
         script(src:="/ace/ace.js", `type`:="text/javascript", charset:="utf-8"),
+        script(src:="/ace/ext-language_tools.js", `type`:="text/javascript", charset:="utf-8"),
         link(rel:="stylesheet", href:="/normalize.css"),
         link(rel:="stylesheet", href:="/styles.css"),
 

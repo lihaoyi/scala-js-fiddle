@@ -2,29 +2,27 @@ package fiddle
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
 import js.Dynamic.{literal => lit}
+import js.{Dynamic => Dyn}
 import scala.scalajs.js.Dynamic._
 import scala.Some
 import org.scalajs.dom
 import rx._
 import JsVal.jsVal2jsAny
 import org.scalajs.dom.extensions.KeyCode
+import scala.concurrent.Future
+import scala.async.Async.{async, await}
 
-class Editor(autocompleted: Var[Option[Completer]], bindings: Seq[(String, String, () => Any)]){
+class Editor(bindings: Seq[(String, String, () => Any)],
+             completions: () => Future[Seq[String]]){
 
   def sess = editor.getSession()
   def aceDoc = sess.getDocument()
   def code = sess.getValue().asInstanceOf[String]
   println("Editor.<init>")
-  val rowCol = Rx{
-    println("Editor.rowCol")
-    val Seq(newRow, newColumn) = Seq(
-      editor.getCursorPosition().row,
-      editor.getCursorPosition().column
-    ).map(_.asInstanceOf[js.Number].toInt)
-    (newRow, newColumn)
-  }
+  def row = editor.getCursorPosition().row.asInstanceOf[js.Number].toInt
+  def column= editor.getCursorPosition().column.asInstanceOf[js.Number].toInt
 
-  def line = aceDoc.getLine(rowCol()._1)
+  def line = aceDoc.getLine(row)
                    .asInstanceOf[js.String]
 
   val editor: js.Dynamic = {
@@ -41,31 +39,19 @@ class Editor(autocompleted: Var[Option[Completer]], bindings: Seq[(String, Strin
         "exec" -> func
       ))
     }
+    val langTools = js.Dynamic.global.require("ace/ext/language_tools")
 
-    val orig = editor.keyBinding.onCommandKey.bind(editor.keyBinding)
+    editor.setOptions(JsVal.obj("enableBasicAutocompletion" -> true));
 
-    editor.on("click", () => Util.defer{
-      autocompleted().foreach(_.clear())
-      autocompleted() = None
-    })
+    editor.completers = js.Array(lit(
+      getCompletions= (editor: Dyn, session: Dyn, pos: Dyn, prefix: Dyn, callback: Dyn) => task*async{
 
-    editor.selection.on("changeCursor", () => rowCol.recalc())
-
-    editor.keyBinding.onCommandKey = { (e: js.Dynamic, hashId: js.Dynamic, keyCode: js.Number) =>
-      println("Editor.onCommandKey")
-      autocompleted().fold[Unit](orig(e, hashId, keyCode)){ a =>
-        keyCode.toInt match {
-          case KeyCode.escape | KeyCode.enter =>
-            a.clear()
-            autocompleted() = None
-            e.preventDefault()
-          case KeyCode.down => a.scroll() = a.scroll() + 1
-          case KeyCode.up => a.scroll() = a.scroll() - 1
-          case x =>
-            orig(e, hashId, keyCode)
-        }
+        val things = await(completions()).map(name =>
+          lit(name=name, value=name, score=10000000, meta="meta")
+        )
+        callback(null, js.Array(things:_*))
       }
-    }
+    ))
 
     editor.getSession().setTabSize(2)
     editor

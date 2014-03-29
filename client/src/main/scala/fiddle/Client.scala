@@ -18,8 +18,6 @@ import JsVal.jsVal2jsAny
 class Client(){
   import Page.{log, logln, red, blue, green}
 
-  val autocompleted: Var[Option[Completer]] = Var(None)
-
   val command = Channel[String]()
 
   def exec(s: String) = {
@@ -49,12 +47,11 @@ class Client(){
     }
   }
 
-  val editor: Editor = new Editor(autocompleted, Seq(
+  val editor: Editor = new Editor(Seq(
     ("Compile", "Enter", () => command.update(editor.code)),
     ("Save", "S", save),
-    ("Export", "E", export),
-    ("Complete", "`", complete)
-  ))
+    ("Export", "E", export)
+  ), () => complete())
 
   logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-`"), " for autocomplete.")
   logln("- Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
@@ -76,38 +73,27 @@ class Client(){
   }
 
 
-  def complete(): Unit = task*async {
-    if (autocompleted() == None){
-      logln("Completing...")
-      val (row, column) = editor.rowCol()
+  def complete() = async {
 
-      val line = editor.aceDoc.getLine(row).asInstanceOf[js.String]
-      val code = editor.sess.getValue().asInstanceOf[String]
-      val intOffset = code.split("\n").take(row).map(_.length + 1).sum + column
+    log("Completing... ")
 
-      val flag = if(code.take(intOffset).endsWith(".")) "member" else "scope"
-      val xhr = await(Ajax.post(
-        s"/complete/$flag/$intOffset",
-        code
-      ))
-      val result = js.JSON.parse(xhr.responseText).asInstanceOf[js.Array[String]]
-      val identifier = line.substring(
-        Completer.startColumn(line, column),
-        Completer.endColumn(line, column)
-      )
+    val code = editor.sess.getValue().asInstanceOf[String]
+    val intOffset = code.split("\n")
+                        .take(editor.row)
+                        .map(_.length + 1)
+                        .sum + editor.column
 
-      editor.aceDoc.removeInLine(row, column, Completer.endColumn(line, column))
-      val newAutocompleted = new Completer(
-        editor,
-        result.toList.find(_.toLowerCase().startsWith(identifier.toLowerCase())).getOrElse(result(0)),
-        row,
-        Completer.startColumn(line, column),
-        result.toList,
-        () => autocompleted() = None
-      )
-      autocompleted() = Some(newAutocompleted)
-      newAutocompleted.render()
-    }
+    val flag = if(code.take(intOffset).endsWith(".")) "member" else "scope"
+    println(code.take(intOffset))
+    println(editor.row + "\t" + editor.column)
+    println("complete flag " + flag)
+    val xhr = await(Ajax.post(
+      s"/complete/$flag/$intOffset",
+      code
+    ))
+    log("Done")
+    logln()
+    js.JSON.parse(xhr.responseText).asInstanceOf[js.Array[String]].toSeq
   }
 
   def export(): Unit = task*async {
