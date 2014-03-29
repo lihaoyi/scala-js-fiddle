@@ -7,13 +7,16 @@ import scala.Some
 import org.scalajs.dom
 import rx._
 import JsVal.jsVal2jsAny
+import org.scalajs.dom.extensions.KeyCode
 
 class Editor(autocompleted: Var[Option[Completer]], bindings: Seq[(String, String, () => Any)]){
 
   def sess = editor.getSession()
   def aceDoc = sess.getDocument()
   def code = sess.getValue().asInstanceOf[String]
-  def getRowCol = {
+  println("Editor.<init>")
+  val rowCol = Rx{
+    println("Editor.rowCol")
     val Seq(newRow, newColumn) = Seq(
       editor.getCursorPosition().row,
       editor.getCursorPosition().column
@@ -41,66 +44,30 @@ class Editor(autocompleted: Var[Option[Completer]], bindings: Seq[(String, Strin
 
     val orig = editor.keyBinding.onCommandKey.bind(editor.keyBinding)
 
-    editor.on("click", () => dom.setTimeout(
-      {() =>
-        rowCol() = getRowCol
-        autocompleted().foreach(_.killOrUpdate())
-      },
-      1
-    ))
-    editor.keyBinding.onCommandKey = {(e: js.Dynamic, hashId: js.Dynamic, keyCode: js.Number) =>
-      rowCol() = getRowCol
-      (autocompleted(), keyCode) match{
-        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.escape =>
-          a.clearAll()
-          autocompleted() = None
-          a.options.kill()
-        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.down =>
-          a.clearAll()
-          a.selected() = a.options()((a.scroll() + 1) % a.options().length)
-          a.renderAll()
-        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.up =>
-          a.clearAll()
-          a.selected() = a.options()((a.scroll() - 1 + a.options().length) % a.options().length)
-          a.renderAll()
-        case (Some(a), x) if x.toInt == dom.extensions.KeyCode.enter =>
-          a.clear()
-          autocompleted() = None
-          a.options.kill()
-          e.preventDefault()
-        case (Some(a), x)
-          if Completer.validIdentChars(js.String.fromCharCode(x.toInt).toString()(0)) =>
-          val (row, column) = rowCol()
+    editor.on("click", () => Util.defer{
+      autocompleted().foreach(_.clear())
+      autocompleted() = None
+    })
 
-          aceDoc.removeInLine(row, column, column + 1)
+    editor.selection.on("changeCursor", () => rowCol.recalc())
 
-          dom.setTimeout(
-            () => {
-              rowCol() = getRowCol
-              a.clearAll()
-              a.renderAll()
-            },
-            0
-          )
-
-        case (Some(a), x) =>
-          orig(e, hashId, keyCode)
-          dom.setTimeout(
-            () => {
-              rowCol() = getRowCol
-              a.killOrUpdate()
-            },
-            0
-          )
-
-        case _ =>
-          orig(e, hashId, keyCode)
+    editor.keyBinding.onCommandKey = { (e: js.Dynamic, hashId: js.Dynamic, keyCode: js.Number) =>
+      println("Editor.onCommandKey")
+      autocompleted().fold[Unit](orig(e, hashId, keyCode)){ a =>
+        keyCode.toInt match {
+          case KeyCode.escape | KeyCode.enter =>
+            a.clear()
+            autocompleted() = None
+            e.preventDefault()
+          case KeyCode.down => a.scroll() = a.scroll() + 1
+          case KeyCode.up => a.scroll() = a.scroll() - 1
+          case x =>
+            orig(e, hashId, keyCode)
+        }
       }
     }
 
     editor.getSession().setTabSize(2)
-    js.Dynamic.global.ed = editor
     editor
   }
-  val rowCol = Var{ getRowCol }
 }

@@ -1,12 +1,24 @@
 package fiddle
 
 import org.scalajs.dom
+import scala.concurrent.{Promise, Future}
+import scala.util.Try
 
 /**
  * Things that should eventually be pushed upstream to one of the libraries
  * that scala-js-fiddle depends on.
  */
 object Util {
+
+  def defer[T](t: =>T): Future[T] = {
+    val p = Promise[T]()
+    scala.scalajs.concurrent.JSExecutionContext.queue.execute(
+      new Runnable{
+        def run(): Unit = p.complete(Try(t))
+      }
+    )
+    p.future
+  }
 
   /**
    * Creates a HTML node from the given string

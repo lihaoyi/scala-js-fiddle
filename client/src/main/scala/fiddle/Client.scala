@@ -76,7 +76,7 @@ class Client(){
   }
 
 
-  def complete(): Unit = async {
+  def complete(): Unit = task*async {
     if (autocompleted() == None){
       logln("Completing...")
       val (row, column) = editor.rowCol()
@@ -99,19 +99,15 @@ class Client(){
       editor.aceDoc.removeInLine(row, column, Completer.endColumn(line, column))
       val newAutocompleted = new Completer(
         editor,
-        Var(result.toList.find(_.toLowerCase().startsWith(identifier.toLowerCase())).getOrElse(result(0))),
+        result.toList.find(_.toLowerCase().startsWith(identifier.toLowerCase())).getOrElse(result(0)),
         row,
         Completer.startColumn(line, column),
         result.toList,
         () => autocompleted() = None
       )
       autocompleted() = Some(newAutocompleted)
-      newAutocompleted.renderAll()
+      newAutocompleted.render()
     }
-  }.recover{ case e =>
-    logln(red(s"E failed with $e,"))
-    e.printStackTrace()
-    ""
   }
 
   def export(): Unit = task*async {

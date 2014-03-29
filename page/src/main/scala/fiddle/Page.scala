@@ -83,9 +83,9 @@ object Page{
     logln("- ", blue("Ctrl/Cmd-S"), " and select ", blue("Web Page, Complete"), " to save for offline use")
     logln("- Click ", a(id:="editLink", href:="javascript:", "here"), " to edit a copy online")
     dom.document
-      .getElementById("editLink")
-      .asInstanceOf[dom.HTMLAnchorElement]
-      .onclick = { (e: dom.MouseEvent) =>
+       .getElementById("editLink")
+       .asInstanceOf[dom.HTMLAnchorElement]
+       .onclick = { (e: dom.MouseEvent) =>
       Util.Form.post("http://localhost:8080/import",
         "source" -> editor.getSession().getValue().toString,
         "compiled" -> dom.document.getElementById("compiled").innerHTML
