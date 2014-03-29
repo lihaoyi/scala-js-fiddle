@@ -14,7 +14,7 @@ import org.scalajs.dom.extensions.Ajax
 import Page.fiddleUrl
 import scala.Some
 import JsVal.jsVal2jsAny
-import fiddle.Channel
+
 import scala.Some
 
 class Client(){

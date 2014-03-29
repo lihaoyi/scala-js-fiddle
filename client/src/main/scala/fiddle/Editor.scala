@@ -25,9 +25,6 @@ class Editor(bindings: Seq[(String, String, () => Any)],
   def row = editor.getCursorPosition().row.asInstanceOf[js.Number].toInt
   def column= editor.getCursorPosition().column.asInstanceOf[js.Number].toInt
 
-  def line = aceDoc.getLine(row)
-                   .asInstanceOf[js.String]
-
   val editor: js.Dynamic = {
     val editor = Editor.initEditor
 
@@ -47,7 +44,7 @@ class Editor(bindings: Seq[(String, String, () => Any)],
 
     editor.setOptions(JsVal.obj("enableBasicAutocompletion" -> true))
 
-    editor.completers = JsVal.arr(JsVal.obj(
+    editor.completers = js.Array(JsVal.obj(
       "getCompletions" -> {(editor: Dyn, session: Dyn, pos: Dyn, prefix: Dyn, callback: Dyn) => task*async{
         val things = await(completions()).map(name =>
           JsVal.obj(
@@ -55,11 +52,11 @@ class Editor(bindings: Seq[(String, String, () => Any)],
             "value" -> name,
             "score" -> 10000000,
             "meta" -> "meta"
-          )
+          ).value
         )
         callback(null, js.Array(things:_*))
       }}
-    )).value
+    ).value)
 
     editor.getSession().setTabSize(2)
     editor
