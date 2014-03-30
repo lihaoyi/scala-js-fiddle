@@ -142,6 +142,8 @@ object Client{
       dom.clearTimeout(i)
     }
     Page.clear()
+    canvas.height = sandbox.clientHeight
+    canvas.width = sandbox.clientWidth
   }
 
   @JSExport

@@ -51,8 +51,6 @@ object Page{
   @JSExport
   def clear() = {
     output.innerHTML = ""
-    canvas.height = sandbox.clientHeight
-    canvas.width = sandbox.clientWidth
   }
 
   @JSExport
