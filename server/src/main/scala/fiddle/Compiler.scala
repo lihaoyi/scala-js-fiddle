@@ -69,7 +69,7 @@ object Compiler{
   }
   import scala.async.Async.{async, await}
 
-  def autocomplete(code: String, flag: String, pos: Int, classpath: Seq[String]): Future[List[String]] = async {
+  def autocomplete(code: String, flag: String, pos: Int, classpath: Seq[String]): Future[List[(String, String)]] = async {
     val vd = new io.VirtualDirectory("(memory)", None)
     // global can be reused, just create new runs for new compiler invocations
     val compiler = initGlobal(
@@ -83,16 +83,23 @@ object Compiler{
     val position  = new OffsetPosition(file, pos + prelude.length)
 
     await(toFuture[Unit](compiler.askReload(List(file), _)))
-    val maybeMems = flag match{
-      case "scope" => await(toFuture[List[compiler.Member]](compiler.askScopeCompletion(position, _)))
-      case "member" => await(toFuture[List[compiler.Member]](compiler.askTypeCompletion(position, _)))
-    }
 
-    compiler.ask(() =>
-      maybeMems.map(x => x.sym.decodedName)
-               .filter(x => !blacklist.contains(x))
+    val maybeMems = await(toFuture[List[compiler.Member]](flag match{
+      case "scope" => compiler.askScopeCompletion(position, _)
+      case "member" => compiler.askTypeCompletion(position, _)
+    }))
+
+    compiler.ask{() =>
+      def sig(x: compiler.Member) = {
+        Seq(
+          x.sym.signatureString,
+          s" (${x.sym.kindString})"
+        ).find(_ != "").getOrElse("--Unknown--")
+      }
+      maybeMems.map(x => sig(x) -> x.sym.decodedName)
+               .filter(!blacklist.contains(_))
                .distinct
-    )
+    }
   }
 
   def makeFile(src: Array[Byte]) = {

@@ -17,13 +17,24 @@ import scala.async.Async.{async, await}
  * do exactly what we want.
  */
 class Editor(bindings: Seq[(String, String, () => Any)],
-             completions: () => Future[Seq[String]]){
-
+             completions: () => Future[Seq[Seq[String]]]){
+  lazy val Autocomplete = js.Dynamic.global.require("ace/autocomplete").Autocomplete
   def sess = editor.getSession()
   def aceDoc = sess.getDocument()
   def code = sess.getValue().asInstanceOf[String]
   def row = editor.getCursorPosition().row.asInstanceOf[js.Number].toInt
   def column= editor.getCursorPosition().column.asInstanceOf[js.Number].toInt
+
+  def complete() = {
+    if (!editor.completer)
+      editor.completer = js.Dynamic.newInstance(Autocomplete)()
+    js.Dynamic.global.window.ed = editor
+    editor.completer.showPopup(editor)
+
+    // needed for firefox on mac
+    editor.completer.cancelContextMenu()
+
+  }
 
   val editor: js.Dynamic = {
     val editor = Editor.initEditor
@@ -40,25 +51,20 @@ class Editor(bindings: Seq[(String, String, () => Any)],
       ))
     }
 
-    js.Dynamic.global.require("ace/ext/language_tools")
-
-    editor.setOptions(JsVal.obj("enableBasicAutocompletion" -> true))
-
     editor.completers = js.Array(JsVal.obj(
       "getCompletions" -> {(editor: Dyn, session: Dyn, pos: Dyn, prefix: Dyn, callback: Dyn) => task*async{
-        val things = await(completions()).map(name =>
+        val things = await(completions()).map{ case Seq(name, value) =>
           JsVal.obj(
-            "name" -> name,
-            "value" -> name,
-            "score" -> 10000000,
-            "meta" -> "meta"
+            "value" -> value,
+            "caption" -> (value + name)
           ).value
-        )
+        }
         callback(null, js.Array(things:_*))
       }}
     ).value)
 
     editor.getSession().setTabSize(2)
+
     editor
   }
 }

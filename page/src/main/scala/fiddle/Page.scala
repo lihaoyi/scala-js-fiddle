@@ -55,6 +55,7 @@ object Page{
 
   @JSExport
   def scroll(px: Int) = {
+    dom.console.log("Scrolling", px)
     output.scrollTop = output.scrollTop + px
   }
   

@@ -117,11 +117,13 @@ object Server extends SimpleRoutingApp {
 
   def completeStuff(flag: String, offset: Int)(ctx: RequestContext): Unit = {
 //    setSecurityManager
-    Compiler.autocomplete(ctx.request.entity.asString, flag, offset, Compiler.validJars).foreach { res: List[String] =>
-      val response = JsArray(res.map(JsString)).toString()
+    for(res <- Compiler.autocomplete(ctx.request.entity.asString, flag, offset, Compiler.validJars)){
+      val response = JsArray(
+        res.map{case (label, name) => JsArray(Seq(label, name).map(JsString))}
+      )
       println(s"got autocomplete: sending $response")
       ctx.responder ! HttpResponse(
-        entity=response,
+        entity=response.toString(),
         headers=List(
           `Access-Control-Allow-Origin`(spray.http.AllOrigins)
         )

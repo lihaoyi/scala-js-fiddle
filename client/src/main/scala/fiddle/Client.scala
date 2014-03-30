@@ -52,7 +52,10 @@ class Client(){
   val editor: Editor = new Editor(Seq(
     ("Compile", "Enter", () => command.update(editor.code)),
     ("Save", "S", save),
-    ("Javascript", "J", viewJavascript),
+    ("Complete", "`", () => editor.complete()),
+    ("Javascript", "J", () => viewJavascript("/compile")),
+    ("PreOptimizedJavascript", "K", () => viewJavascript("/preoptimize")),
+    ("OptimizedJavascript", "L", () => viewJavascript("/optimize")),
     ("Export", "E", export)
   ), complete)
 
@@ -75,12 +78,13 @@ class Client(){
     }
   }
 
-  def viewJavascript() = task*async {
-    await(compile(editor.code, "/compile")).foreach{ compiled  =>
+  def viewJavascript(endpoint: String) = task*async {
+    await(compile(editor.code, endpoint)).foreach{ compiled  =>
       Client.clear()
       Page.output.innerHTML = Page.highlight(compiled , "ace/mode/javascript")
     }
   }
+
   def complete() = async {
     log("Completing... ")
 
@@ -99,8 +103,9 @@ class Client(){
     logln()
     js.JSON
       .parse(xhr.responseText)
-      .asInstanceOf[js.Array[String]]
+      .asInstanceOf[js.Array[js.Array[String]]]
       .toSeq
+      .map(_.toSeq)
   }
 
   def export(): Unit = task*async {
