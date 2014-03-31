@@ -40,11 +40,12 @@ class Editor(bindings: Seq[(String, String, () => Any)],
     val editor = Editor.initEditor
 
     for ((name, key, func) <- bindings){
+      val binding = s"Ctrl-$key|Cmd-$key"
       editor.commands.addCommand(JsVal.obj(
         "name" -> name,
         "bindKey" -> JsVal.obj(
-          "win" -> ("Ctrl-" + key),
-          "mac" -> ("Cmd-" + key),
+          "win" -> binding,
+          "mac" -> binding,
           "sender" -> "editor|cli"
         ),
         "exec" -> func

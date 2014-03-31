@@ -52,7 +52,7 @@ class Client(){
   val editor: Editor = new Editor(Seq(
     ("Compile", "Enter", () => command.update(editor.code)),
     ("Save", "S", save),
-    ("Complete", "`", () => editor.complete()),
+    ("Complete", "Space", () => editor.complete()),
     ("Javascript", "J", () => viewJavascript("/compile")),
     ("PreOptimizedJavascript", "K", () => viewJavascript("/preoptimize")),
     ("OptimizedJavascript", "L", () => viewJavascript("/optimize")),
