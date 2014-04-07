@@ -23,7 +23,10 @@ libraryDependencies ++= Seq(
   "org.scala-lang.modules.scalajs" %% "scalajs-tools" % "0.4.2-SNAPSHOT",
   "org.scala-lang.modules" %% "scala-async" % "0.9.0" % "provided",
   "com.scalatags" % "scalatags_2.10" % "0.2.4",
-  "com.lihaoyi" %% "acyclic" % "0.1.1" % "provided"
+  "com.lihaoyi" %% "acyclic" % "0.1.1" % "provided",
+  "org.webjars" % "ace" % "07.31.2013",
+  "org.webjars" % "jquery" % "2.1.0-2",
+  "org.webjars" % "normalize.css" % "2.1.3"
 )
 
 resolvers += "Typesafe Repo" at "http://repo.typesafe.com/typesafe/releases/"

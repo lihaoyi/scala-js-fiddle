@@ -27,6 +27,9 @@ object Compiler{
     "/classpath/scalajs-dom_2.10-0.3.jar",
     "/classpath/scalatags_2.10-0.2.4-JS.jar",
     "/classpath/scalarx_2.10-0.2.3-JS.jar",
+    "/classpath/scala-async_2.10-0.9.0.jar",
+    "/classpath/scalaxy-loops_2.10-0.1.jar",
+    "/classpath/scalaxy-privacy_2.10-0.3-SNAPSHOT.jar",
     "/page_2.10-0.1-SNAPSHOT.jar"
   )
 

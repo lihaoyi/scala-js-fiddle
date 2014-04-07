@@ -20,7 +20,7 @@ import scala.Some
 class Client(){
   import Page.{log, logln, red, blue, green}
 
-  val command = Channel[String]()
+  val command = Channel[(String, String)]()
 
   def exec(s: String) = {
     Client.clear()
@@ -36,12 +36,13 @@ class Client(){
   }
 
   val compilationLoop = task*async{
-    val code = await(command())
+    val (code, cmd) = await(command())
+    await(compile(code, cmd)).foreach(exec)
 
-    await(compile(code, "/optimize")).foreach(exec)
     while(true){
-      val code = await(command())
-      val compiled = await(compile(code, compileEndpoint))
+      val (code, cmd) = await(command())
+      val compiled = await(compile(code, cmd))
+
       js.eval(extdeps)
       extdeps = ""
       compiled.foreach(exec)
@@ -50,12 +51,14 @@ class Client(){
   }
 
   val editor: Editor = new Editor(Seq(
-    ("Compile", "Enter", () => command.update(editor.code)),
+    ("Compile", "Enter", () => command.update((editor.code, compileEndpoint))),
+    ("PreOptimize", "Alt-Enter", () => command.update((editor.code, "/preoptimize"))),
+    ("Optimize", "Shift-Enter", () => command.update((editor.code, "/optimize"))),
     ("Save", "S", save),
     ("Complete", "Space", () => editor.complete()),
     ("Javascript", "J", () => viewJavascript("/compile")),
-    ("PreOptimizedJavascript", "K", () => viewJavascript("/preoptimize")),
-    ("OptimizedJavascript", "L", () => viewJavascript("/optimize")),
+    ("PreOptimizedJavascript", "Alt-J", () => viewJavascript("/preoptimize")),
+    ("OptimizedJavascript", "Shift-J", () => viewJavascript("/optimize")),
     ("Export", "E", export)
   ), complete)
 
@@ -65,7 +68,7 @@ class Client(){
   def compile(code: String, endpoint: String): Future[Option[String]] = async {
     if (code == "") None
     else {
-      log("Compiling... ")
+      log(s"Compiling with $endpoint... ")
       val res = await(Ajax.post(endpoint, code))
       val result = JsVal.parse(res.responseText)
       if (result("logspam").asString != ""){
@@ -163,14 +166,14 @@ object Client{
     val src = await(load(gistId, fileName))
     val client = new Client()
     client.editor.sess.setValue(src)
-    client.command.update(src)
+    client.command.update((src, "/optimize"))
   }
 
   @JSExport
   def importMain(): Unit = {
     clear()
     val client = new Client()
-    client.command.update("")
+    client.command.update(("", "/compile"))
     js.eval(Page.compiled)
   }
 

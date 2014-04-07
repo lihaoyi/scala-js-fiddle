@@ -45,32 +45,30 @@ object Server extends SimpleRoutingApp {
       cache(simpleCache) {
         encodeResponse(Gzip) {
           get {
-            respondWithHeaders(`Cache-Control`(`public`, `max-age`(60L*60L*24L))) {
-              pathSingleSlash {
-                complete{
-                  HttpEntity(
-                    MediaTypes.`text/html`,
-                    Static.page(
-                      s"Client().gistMain([])",
-                      clientFiles,
-                      "Loading gist...")
+            pathSingleSlash {
+              complete{
+                HttpEntity(
+                  MediaTypes.`text/html`,
+                  Static.page(
+                    s"Client().gistMain([])",
+                    clientFiles,
+                    "Loading gist...")
+                )
+              }
+            } ~
+            path("gist" / Segments){ i =>
+              complete{
+                HttpEntity(
+                  MediaTypes.`text/html`,
+                  Static.page(
+                    s"Client().gistMain(${JsArray(i.map(JsString)).toString()})",
+                    clientFiles,
+                    "Loading gist..."
                   )
-                }
-              } ~
-              path("gist" / Segments){ i =>
-                complete{
-                  HttpEntity(
-                    MediaTypes.`text/html`,
-                    Static.page(
-                      s"Client().gistMain(${JsArray(i.map(JsString)).toString()})",
-                      clientFiles,
-                      "Loading gist..."
-                    )
-                  )
-                }
-              } ~
-              getFromResourceDirectory("")
-            }
+                )
+              }
+            } ~
+            getFromResourceDirectory("")
           } ~
           post {
             path("compile"){

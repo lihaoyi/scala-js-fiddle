@@ -4,11 +4,12 @@ import scalatags._
 import scalatags.all._
 object Static{
   val aceFiles = Seq(
-    "/ace/ace.js",
-    "/ace/ext-language_tools.js",
-    "/ace/ext-static_highlight.js",
-    "/ace/mode-scala.js",
-    "/ace/theme-twilight.js"
+    "/META-INF/resources/webjars/ace/07.31.2013/src-min/ace.js",
+    "/META-INF/resources/webjars/ace/07.31.2013/src-min/ext-language_tools.js",
+    "/META-INF/resources/webjars/ace/07.31.2013/src-min/ext-static_highlight.js",
+    "/META-INF/resources/webjars/ace/07.31.2013/src-min/mode-scala.js",
+    "/META-INF/resources/webjars/ace/07.31.2013/src-min/theme-twilight.js",
+    "/META-INF/resources/webjars/jquery/2.1.0/jquery.js"
   )
 
   def page(arg: String, srcFiles: Seq[String], source: String = "", compiled: String = "", analytics: Boolean = true) =
@@ -20,7 +21,7 @@ object Static{
         for(srcFile <- srcFiles ++ aceFiles) yield script(
           `type`:="text/javascript", src:=srcFile
         ),
-        link(rel:="stylesheet", href:="/normalize.css"),
+        link(rel:="stylesheet", href:="/META-INF/resources/webjars/normalize.css/2.1.3/normalize.css"),
         link(rel:="stylesheet", href:="/styles.css"),
 
         if (analytics) script(raw(
