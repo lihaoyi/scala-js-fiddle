@@ -62,7 +62,7 @@ class Client(){
     ("Export", "E", export)
   ), complete)
 
-  logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-`"), " for autocomplete.")
+  logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-Space"), " for autocomplete.")
   logln("- Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
 
   def compile(code: String, endpoint: String): Future[Option[String]] = async {
