@@ -25,8 +25,9 @@ object Compiler{
     val functionLiteral = "function\\([^\"\\n]*?\\) \\{(?=\\n)"
     val whileTrue = "\\n[^\"\\n]*while \\(.*(?=\\n)"
     val catchBlock = "\\n\\s*\\} catch.*(?=\\n)"
+    val finallyBlock = "\\n\\s*\\} finally \\{(?=\\n)"
     def instrument(s: String, hook: String) = {
-      s"($functionLiteral|$whileTrue|$catchBlock)".r.replaceAllIn(
+      s"($functionLiteral|$whileTrue|$catchBlock|$finallyBlock)".r.replaceAllIn(
         s, s"$$1\n$hook\n"
       )
     }
