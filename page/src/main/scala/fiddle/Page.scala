@@ -42,6 +42,7 @@ object Page{
   def renderln(ss: String*) = {
     render(div(ss.map(raw)).toString)
   }
+
   @JSExport
   def render(ss: String*) = {
     for (s <- ss) output.appendChild(Util.createDom(s))

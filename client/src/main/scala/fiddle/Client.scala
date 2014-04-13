@@ -19,26 +19,53 @@ import scala.Some
 
 @JSExport
 object Termination{
-  var endTime = 0.0
+  /**
+   * Deadline by which the user code must complete execution.
+   */
+  private[this] var endTime = 0.0
+  /**
+   * Switch to flip to once you have run out of time to make
+   * `check` fail every single time, ensuring you get thrown out
+   * of the user code
+   */
+  private[this] var dead = false
+  /**
+   * Used to avoid doing an expensive `currentTimeMillis` check on every call,
+   * and instead doing one every N calls.
+   */
+  private[this] var count = 0
   val instrument = """check()"""
   @JSExport
-  def check() = {
-    if (System.currentTimeMillis() > endTime){
-      throw new Exception("Time's Up!")
+  def check(): Unit = {
+    count += 1
+    if (dead || count % 1000 == 0 && System.currentTimeMillis() > endTime) {
+      dead = true
+      dom.console.log("DIE")
+      Client.clearTimeouts()
+      js.eval("""throw new Error("Time's Up! Your code took too long to run.")""")
     }
   }
-  def reset(max: Int) = {
 
-    endTime = System.currentTimeMillis() + max
+  @JSExport
+  def reset(max: Int) = {
+    count = 0
+    dead = false
+    endTime = math.max(System.currentTimeMillis() + max, endTime)
+  }
+
+  def scheduleResets() = {
+    dom.setInterval(() => Termination.reset(1000), 100)
   }
 }
-
 class Client(){
   import Page.{log, logln, red, blue, green}
-
+  Termination.scheduleResets()
   val command = Channel[(String, String)]()
+
   def exec(s: String) = {
     Client.clear()
+    Termination.scheduleResets()
+
     Termination.reset(1000)
     try{
       js.eval(s"""(function(ScalaJS){
@@ -47,7 +74,7 @@ class Client(){
         ScalaJSExample().main();
       })""").asInstanceOf[js.Function1[js.Any, js.Any]](storedScalaJS)
     }catch{case e =>
-      logln(red(e.getMessage))
+      Client.logError(e.toString())
     }
   }
 
@@ -171,15 +198,28 @@ class Client(){
 
 @JSExport
 object Client{
-
+  // Monkey patch setTimeout and setInterval
   import Page.{canvas, sandbox, logln, red, blue, green}
+  dom.onerror = ({(event: dom.Event, source: js.String, fileno: js.Number, columnNumber: js.Number) =>
+    dom.console.log("dom.onerror")
+    Client.logError(event.toString())
+  }: js.Function4[dom.Event, js.String, js.Number, js.Number, Unit]).asInstanceOf[dom.ErrorEventHandler]
 
-  def clear() = {
-    for(i <- 0 until 10000){
+  @JSExport
+  def logError(s: String) = {
+    logln(red(s))
+  }
+  def clearTimeouts() = {
+    for(i <- -100000 until 100000){
       dom.clearInterval(i)
       dom.clearTimeout(i)
     }
+    Termination.scheduleResets()
+  }
+  def clear() = {
+    clearTimeouts()
     Page.clear()
+
     canvas.height = sandbox.clientHeight
     canvas.width = sandbox.clientWidth
   }

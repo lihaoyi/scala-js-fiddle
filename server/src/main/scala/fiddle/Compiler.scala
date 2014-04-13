@@ -22,9 +22,9 @@ import scala.scalajs.tools.classpath.ScalaJSClasspathEntries
 
 object Compiler{
   object Nontermination{
-    val functionLiteral = "function\\([^\"\\n]*?\\) \\{\\n"
-    val whileTrue = "\\n[^\"\\n]*while \\(.*\\n"
-    val catchBlock = "\\n\\s*\\} catch.*\\n"
+    val functionLiteral = "function\\([^\"\\n]*?\\) \\{(?=\\n)"
+    val whileTrue = "\\n[^\"\\n]*while \\(.*(?=\\n)"
+    val catchBlock = "\\n\\s*\\} catch.*(?=\\n)"
     def instrument(s: String, hook: String) = {
       s"($functionLiteral|$whileTrue|$catchBlock)".r.replaceAllIn(
         s, s"$$1\n$hook\n"
