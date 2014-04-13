@@ -17,24 +17,48 @@ import JsVal.jsVal2jsAny
 
 import scala.Some
 
+@JSExport
+object Termination{
+  var endTime = 0.0
+  val instrument = """check()"""
+  @JSExport
+  def check() = {
+    if (System.currentTimeMillis() > endTime){
+      throw new Exception("Time's Up!")
+    }
+  }
+  def reset(max: Int) = {
+
+    endTime = System.currentTimeMillis() + max
+  }
+}
+
 class Client(){
   import Page.{log, logln, red, blue, green}
 
   val command = Channel[(String, String)]()
-
   def exec(s: String) = {
     Client.clear()
-    js.eval(s)
+    Termination.reset(1000)
+    try{
+      js.eval(s"""(function(ScalaJS){
+        function check(){ Termination().check() }
+        $s;
+        ScalaJSExample().main();
+      })""").asInstanceOf[js.Function1[js.Any, js.Any]](storedScalaJS)
+    }catch{case e =>
+      logln(red(e.getMessage))
+    }
   }
 
   var compileEndpoint = "/preoptimize"
   var extdeps = ""
 
   lazy val extdepsLoop = task*async{
-    extdeps = await(Ajax.post("/extdeps")).responseText
+    extdeps = await(Ajax.post("/extdeps/" + Termination.instrument)).responseText
     compileEndpoint = "/compile"
   }
-
+  var storedScalaJS: js.Any = ""
   val compilationLoop = task*async{
     val (code, cmd) = await(command())
     await(compile(code, cmd)).foreach(exec)
@@ -42,9 +66,15 @@ class Client(){
     while(true){
       val (code, cmd) = await(command())
       val compiled = await(compile(code, cmd))
-
-      js.eval(extdeps)
-      extdeps = ""
+      if (extdeps != ""){
+        Termination.reset(5000)
+        storedScalaJS = js.eval(s"""(function(){
+          function check(){ Termination().check() }
+          $extdeps
+          return ScalaJS
+        }).call(window)""")
+        extdeps = ""
+      }
       compiled.foreach(exec)
       extdepsLoop
     }
@@ -69,7 +99,7 @@ class Client(){
     if (code == "") None
     else {
       log(s"Compiling with $endpoint... ")
-      val res = await(Ajax.post(endpoint, code))
+      val res = await(Ajax.post(endpoint + "/" + Termination.instrument, code))
       val result = JsVal.parse(res.responseText)
       if (result("logspam").asString != ""){
         logln(result("logspam").asString)

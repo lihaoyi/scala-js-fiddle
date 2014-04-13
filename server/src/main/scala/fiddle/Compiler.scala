@@ -21,6 +21,16 @@ import scala.scalajs.tools.logging.Level
 import scala.scalajs.tools.classpath.ScalaJSClasspathEntries
 
 object Compiler{
+  object Nontermination{
+    val functionLiteral = "function\\([^\"\\n]*?\\) \\{\\n"
+    val whileTrue = "\\n[^\"\\n]*while \\(.*\\n"
+    val catchBlock = "\\n\\s*\\} catch.*\\n"
+    def instrument(s: String, hook: String) = {
+      s"($functionLiteral|$whileTrue|$catchBlock)".r.replaceAllIn(
+        s, s"$$1\n$hook\n"
+      )
+    }
+  }
 
   val validJars = Seq(
     "/classpath/scalajs-library_2.10-0.4.2-SNAPSHOT.jar",
@@ -138,7 +148,9 @@ object Compiler{
     make(settings, reporter)
 
   }
-  def compile(src: Array[Byte], classpath: Seq[String], logger: String => Unit): Option[Seq[io.AbstractFile]] = {
+  def compile(src: Array[Byte],
+              classpath: Seq[String],
+              logger: String => Unit): Option[Seq[io.AbstractFile]] = {
 
     val singleFile = makeFile(src)
     val vd = new io.VirtualDirectory("(memory)", None)
@@ -157,7 +169,7 @@ object Compiler{
     else Some(vd.iterator.toSeq)
   }
 
-  def packageJS(cp: ScalaJSClasspathEntries) = {
+  def packageJS(cp: ScalaJSClasspathEntries, instrument: String) = {
     val packager = new ScalaJSPackager
     val stringer = new StringWriter()
     val printer = new PrintWriter(stringer)
@@ -167,9 +179,9 @@ object Compiler{
       ScalaJSPackager.OutputConfig("extdeps.js", printer, None),
       IgnoreLogger
     )
-    stringer.toString
+    Nontermination.instrument(stringer.toString, instrument)
   }
-  def packageUserFiles(userFiles: Seq[(String, String)]) = {
+  def packageUserFiles(userFiles: Seq[(String, String)], instrument: String) = {
     val packager = new ScalaJSPackager
     val stringer = new StringWriter()
     val printer = new PrintWriter(stringer)
@@ -186,10 +198,10 @@ object Compiler{
       ScalaJSPackager.OutputConfig("extdeps.js", printer, None),
       IgnoreLogger
     )
-    stringer.toString
+    Nontermination.instrument(stringer.toString, instrument)
   }
   
-  def deadCodeElimination(userFiles: Seq[(String, String)]) = {
+  def deadCodeElimination(userFiles: Seq[(String, String)], instrument: String) = {
 
     val (_, _, preppedUserFiles) = prep(userFiles)
 
@@ -200,15 +212,15 @@ object Compiler{
       ScalaJSOptimizer.OutputConfig("output.js"),
       Compiler.IgnoreLogger
     )
-    res.output.content
+    Nontermination.instrument(res.output.content, instrument)
   }
 
-  def optimize(userFiles: Seq[(String, String)]) = {
+  def optimize(userFiles: Seq[(String, String)], instrument: String) = {
     new ScalaJSClosureOptimizer().optimize(
       ScalaJSClosureOptimizer.Inputs(
         Seq(new VirtualJSFile {
           def name = "Hello.js"
-          def content = Compiler.deadCodeElimination(userFiles)
+          def content = Compiler.deadCodeElimination(userFiles, instrument)
         })
       ),
       ScalaJSClosureOptimizer.OutputConfig(

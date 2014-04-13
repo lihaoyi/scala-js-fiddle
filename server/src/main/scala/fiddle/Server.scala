@@ -71,18 +71,18 @@ object Server extends SimpleRoutingApp {
             getFromResourceDirectory("")
           } ~
           post {
-            path("compile"){
-              compileStuff(_, Compiler.packageUserFiles _ andThen funcWrap)
+            path("compile" / Segment){ s =>
+              compileStuff(_, x => Compiler.packageUserFiles(x, s))
             } ~
-            path("optimize"){
-              compileStuff(_, Compiler.optimize _ andThen funcWrap)
+            path("optimize" / Segment){ s =>
+              compileStuff(_, x => Compiler.optimize(x, s))
             } ~
-            path("preoptimize"){
-              compileStuff(_, Compiler.deadCodeElimination _ andThen funcWrap)
+            path("preoptimize" / Segment){ s =>
+              compileStuff(_, x => Compiler.deadCodeElimination(x, s))
             } ~
-            path("extdeps"){
+            path("extdeps" / Segment){ s =>
               complete{
-                Compiler.packageJS(Compiler.classPath)
+                Compiler.packageJS(Compiler.classPath, s)
               }
             } ~
             path("export"){
@@ -128,7 +128,7 @@ object Server extends SimpleRoutingApp {
       )
     }
   }
-  def funcWrap(s: String) = s"(function(){ $s; ScalaJSExample().main(); console.log('running')}).call(window)"
+
   def compileStuff(ctx: RequestContext, processor: Seq[(String, String)] => String): Unit = {
 
     val output = mutable.Buffer.empty[String]
