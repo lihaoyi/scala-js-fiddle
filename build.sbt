@@ -3,9 +3,11 @@ import scala.scalajs.sbtplugin.ScalaJSPlugin.ScalaJSKeys._
 
 val page = project.in(file("page"))
 
+val runtime = project.in(file("runtime"))
+
 val client = project.in(file("client")).dependsOn(page)
 
-val server = project.in(file("server"))
+val server = project.in(file("server")).dependsOn(runtime)
 
 SbtStartScript.stage in Compile := Unit
 
@@ -15,6 +17,6 @@ SbtStartScript.stage in Compile := Unit
 
 (crossTarget in (page, Compile, packageBin)) := (classDirectory in (server, Compile)).value
 
-(crossTarget in (page, Compile, optimizeJS)) := (classDirectory in (server, Compile)).value
+(crossTarget in (runtime, Compile, packageBin)) := (classDirectory in (server, Compile)).value
 
 scalaVersion := "2.10.3"

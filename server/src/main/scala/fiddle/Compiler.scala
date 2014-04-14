@@ -41,11 +41,14 @@ object Compiler{
     "/classpath/scala-async_2.10-0.9.0.jar",
     "/classpath/scalaxy-loops_2.10-0.1.jar",
     "/classpath/scalaxy-privacy_2.10-0.3-SNAPSHOT.jar",
-    "/page_2.10-0.1-SNAPSHOT.jar"
+    "/page_2.10-0.1-SNAPSHOT.jar",
+    "/runtime_2.10-0.1-SNAPSHOT.jar"
   )
+  val prelude = Source.fromInputStream(getClass.getResourceAsStream("/Prelude.scala"))
+                      .mkString
 
   val classPath = {
-    val builder = new ScalaJSClasspathEntries.Builder 
+    val builder = new ScalaJSClasspathEntries.Builder
     for(name <- Compiler.validJars){
       val stream = getClass.getResourceAsStream(name)
       assert(stream != null, s"stream for $name is null")
@@ -75,7 +78,7 @@ object Compiler{
   val blacklist = Seq(
     "<init>"
   )
-  val prelude = Source.fromInputStream(getClass.getResourceAsStream("/Prelude.scala")).mkString
+
 
   def toFuture[T](func: Response[T] => Unit): Future[T] = {
     val r = new Response[T]
@@ -83,13 +86,13 @@ object Compiler{
   }
   import scala.async.Async.{async, await}
 
-  def autocomplete(code: String, flag: String, pos: Int, classpath: Seq[String]): Future[List[(String, String)]] = async {
+  def autocomplete(code: String, flag: String, pos: Int, validJars: Seq[String]): Future[List[(String, String)]] = async {
     val vd = new io.VirtualDirectory("(memory)", None)
     // global can be reused, just create new runs for new compiler invocations
     val compiler = initGlobal(
       (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter),
       vd,
-      classpath,
+      validJars,
       s => ()
     )
 
@@ -125,12 +128,12 @@ object Compiler{
   }
   def initGlobal[T](make: (Settings, ConsoleReporter) => T,
                     vd: io.VirtualDirectory,
-                    classpath: Seq[String],
+                    validJars: Seq[String],
                     logger: String => Unit) = {
     lazy val settings = new Settings
     val loader = getClass.getClassLoader.asInstanceOf[URLClassLoader]
     val entries = loader.getURLs.map(_.getPath)
-    val classpathEntries = classpath.map(getClass.getResource(_).getPath.replace("%20", " "))
+    val classpathEntries = validJars.map(getClass.getResource(_).getPath.replace("%20", " "))
     settings.outputDirs.setSingleOutput(vd)
     settings.classpath.value = ClassPath.join(classpathEntries ++ entries: _*)
 
@@ -150,7 +153,7 @@ object Compiler{
 
   }
   def compile(src: Array[Byte],
-              classpath: Seq[String],
+              validJars: Seq[String],
               logger: String => Unit): Option[Seq[io.AbstractFile]] = {
 
     val singleFile = makeFile(src)
@@ -160,7 +163,7 @@ object Compiler{
         override lazy val plugins = List[Plugin](new scala.scalajs.compiler.ScalaJSPlugin(this))
       },
       vd,
-      classpath,
+      validJars,
       logger
     )
     val run = new compiler.Run()
