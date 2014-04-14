@@ -17,7 +17,8 @@ import scala.async.Async.{async, await}
  * do exactly what we want.
  */
 class Editor(bindings: Seq[(String, String, () => Any)],
-             completions: () => Future[Seq[Seq[String]]]){
+             completions: () => Future[Seq[Seq[String]]],
+             implicit val logger: Logger){
   lazy val Autocomplete = js.Dynamic.global.require("ace/autocomplete").Autocomplete
   def sess = editor.getSession()
   def aceDoc = sess.getDocument()

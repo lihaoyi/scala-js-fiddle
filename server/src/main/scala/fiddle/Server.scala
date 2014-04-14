@@ -71,18 +71,18 @@ object Server extends SimpleRoutingApp {
             getFromResourceDirectory("")
           } ~
           post {
-            path("compile" / Segment){ s =>
-              compileStuff(_, x => Compiler.packageUserFiles(x, s))
+            path("compile" ~ (Slash ~ Segment).?){ s =>
+              compileStuff(_, Compiler.packageUserFiles(_, s.getOrElse("")))
             } ~
-            path("optimize" / Segment){ s =>
-              compileStuff(_, x => Compiler.optimize(x, s))
+            path("optimize" ~ (Slash ~ Segment).?){ s =>
+              compileStuff(_, Compiler.optimize(_, s.getOrElse("")))
             } ~
-            path("preoptimize" / Segment){ s =>
-              compileStuff(_, x => Compiler.deadCodeElimination(x, s))
+            path("preoptimize" ~ (Slash ~ Segment).?){ s =>
+              compileStuff(_, Compiler.deadCodeElimination(_, s.getOrElse("")))
             } ~
-            path("extdeps" / Segment){ s =>
+            path("extdeps" ~ (Slash ~ Segment).?){ s =>
               complete{
-                Compiler.packageJS(Compiler.classPath, s)
+                Compiler.packageJS(Compiler.classPath, s.getOrElse(""))
               }
             } ~
             path("export"){

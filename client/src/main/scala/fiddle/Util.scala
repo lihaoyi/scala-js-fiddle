@@ -57,15 +57,15 @@ object JsVal {
   }
 }
 
-
+class Logger(val f: String => Unit)
 /**
  * Used to mark a Future as a task which returns Unit, making
  * sure to print the error and stack trace if it fails.
  */
 object task{
-  def *[T](f: Future[T])(implicit ec: ExecutionContext) = {
+  def *[T](f: Future[T])(implicit ec: ExecutionContext, logger: Logger) = {
     f.map(_ => ()).recover{ case e =>
-      println(e)
+      logger.f(e.toString)
       e.printStackTrace()
     }
   }

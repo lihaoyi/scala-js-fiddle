@@ -9,10 +9,11 @@ import akka.util.ByteString
 import scala.tools.nsc.reporters.ConsoleReporter
 import scala.tools.nsc.plugins.Plugin
 import scala.concurrent.Future
-
+import scala.async.Async.{async, await}
+import concurrent.ExecutionContext.Implicits.global
 import scala.reflect.internal.util.{BatchSourceFile, OffsetPosition}
 import scala.tools.nsc.interactive.Response
-import java.util.zip.ZipInputStream
+
 import scala.scalajs.tools.packager.ScalaJSPackager
 import scala.io.Source
 import scala.scalajs.tools.optimizer.{ScalaJSClosureOptimizer, ScalaJSOptimizer}
@@ -27,9 +28,12 @@ object Compiler{
     val catchBlock = "\\n\\s*\\} catch.*(?=\\n)"
     val finallyBlock = "\\n\\s*\\} finally \\{(?=\\n)"
     def instrument(s: String, hook: String) = {
-      s"($functionLiteral|$whileTrue|$catchBlock|$finallyBlock)".r.replaceAllIn(
-        s, s"$$1\n$hook\n"
-      )
+      if (hook == "") s
+      else{
+        s"($functionLiteral|$whileTrue|$catchBlock|$finallyBlock)".r.replaceAllIn(
+          s, s"$$1\n\\$$$hook()\n"
+        )
+      }
     }
   }
 
@@ -44,6 +48,7 @@ object Compiler{
     "/page_2.10-0.1-SNAPSHOT.jar",
     "/runtime_2.10-0.1-SNAPSHOT.jar"
   )
+
   val prelude = Source.fromInputStream(getClass.getResourceAsStream("/Prelude.scala"))
                       .mkString
 
@@ -73,18 +78,15 @@ object Compiler{
     }
     (jsFiles, jsInfoFiles, scalaJsFiles)
   }
-  
-  import concurrent.ExecutionContext.Implicits.global
+
   val blacklist = Seq(
     "<init>"
   )
-
 
   def toFuture[T](func: Response[T] => Unit): Future[T] = {
     val r = new Response[T]
     Future { func(r) ; r.get.left.get }
   }
-  import scala.async.Async.{async, await}
 
   def autocomplete(code: String, flag: String, pos: Int, validJars: Seq[String]): Future[List[(String, String)]] = async {
     val vd = new io.VirtualDirectory("(memory)", None)
@@ -126,6 +128,7 @@ object Compiler{
     output.close()
     singleFile
   }
+
   def initGlobal[T](make: (Settings, ConsoleReporter) => T,
                     vd: io.VirtualDirectory,
                     validJars: Seq[String],
@@ -185,6 +188,7 @@ object Compiler{
     )
     Nontermination.instrument(stringer.toString, instrument)
   }
+
   def packageUserFiles(userFiles: Seq[(String, String)], instrument: String) = {
     val packager = new ScalaJSPackager
     val stringer = new StringWriter()
@@ -239,6 +243,7 @@ object Compiler{
     def success(message: => String): Unit = println(message)
     def trace(t: => Throwable): Unit = t.printStackTrace()
   }
+
   object IgnoreLogger extends scala.scalajs.tools.logging.Logger {
     def log(level: Level, message: => String): Unit = ()
     def success(message: => String): Unit = ()

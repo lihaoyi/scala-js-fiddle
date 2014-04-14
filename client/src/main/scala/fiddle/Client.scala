@@ -14,11 +14,11 @@ import org.scalajs.dom.extensions.Ajax
 import Page.fiddleUrl
 import scala.Some
 import JsVal.jsVal2jsAny
-
+import Client.RedLogger
 import scala.Some
 
 @JSExport
-object Termination{
+object Checker{
   /**
    * Deadline by which the user code must complete execution.
    */
@@ -34,13 +34,11 @@ object Termination{
    * and instead doing one every N calls.
    */
   private[this] var count = 0
-  val instrument = """check()"""
   @JSExport
   def check(): Unit = {
     count += 1
-    if (dead || count % 1000 == 0 && System.currentTimeMillis() > endTime) {
+    if (count % 1000 == 0 && js.Date.now() > endTime || dead) {
       dead = true
-      dom.console.log("DIE")
       Client.clearTimeouts()
       js.eval("""throw new Error("Time's Up! Your code took too long to run.")""")
     }
@@ -50,26 +48,29 @@ object Termination{
   def reset(max: Int) = {
     count = 0
     dead = false
-    endTime = math.max(System.currentTimeMillis() + max, endTime)
+    endTime = math.max(js.Date.now() + max, endTime)
   }
 
   def scheduleResets() = {
-    dom.setInterval(() => Termination.reset(1000), 100)
+    dom.setInterval(() => Checker.reset(1000), 100)
   }
 }
+
 class Client(){
   import Page.{log, logln, red, blue, green}
-  Termination.scheduleResets()
+  Client.scheduleResets()
   val command = Channel[(String, String)]()
 
   def exec(s: String) = {
     Client.clear()
-    Termination.scheduleResets()
+    Client.scheduleResets()
 
-    Termination.reset(1000)
+    Checker.reset(1000)
     try{
       js.eval(s"""(function(ScalaJS){
-        function check(){ Termination().check() }
+        $$checker = Checker()
+        $$c = function(){ $$checker.check() };
+
         $s;
         ScalaJSExample().main();
       })""").asInstanceOf[js.Function1[js.Any, js.Any]](storedScalaJS)
@@ -77,13 +78,13 @@ class Client(){
       Client.logError(e.toString())
     }
   }
-
-  var compileEndpoint = "/preoptimize"
+  val instrument = "c"
+  var compileEndpoint = s"/preoptimize/$instrument"
   var extdeps = ""
 
   lazy val extdepsLoop = task*async{
-    extdeps = await(Ajax.post("/extdeps/" + Termination.instrument)).responseText
-    compileEndpoint = "/compile"
+    extdeps = await(Ajax.post("/extdeps/" + instrument)).responseText
+    compileEndpoint = s"/compile/$instrument"
   }
   var storedScalaJS: js.Any = ""
   val compilationLoop = task*async{
@@ -94,9 +95,11 @@ class Client(){
       val (code, cmd) = await(command())
       val compiled = await(compile(code, cmd))
       if (extdeps != ""){
-        Termination.reset(5000)
+        Checker.reset(5000)
         storedScalaJS = js.eval(s"""(function(){
-          function check(){ Termination().check() }
+          $$checker = Checker()
+          $$c = function(){ $$checker.check() };
+
           $extdeps
           return ScalaJS
         }).call(window)""")
@@ -109,15 +112,15 @@ class Client(){
 
   val editor: Editor = new Editor(Seq(
     ("Compile", "Enter", () => command.update((editor.code, compileEndpoint))),
-    ("PreOptimize", "Alt-Enter", () => command.update((editor.code, "/preoptimize"))),
+    ("PreOptimize", "Alt-Enter", () => command.update((editor.code, s"/preoptimize/$instrument"))),
     ("Optimize", "Shift-Enter", () => command.update((editor.code, "/optimize"))),
     ("Save", "S", save),
     ("Complete", "Space", () => editor.complete()),
-    ("Javascript", "J", () => viewJavascript("/compile")),
-    ("PreOptimizedJavascript", "Alt-J", () => viewJavascript("/preoptimize")),
-    ("OptimizedJavascript", "Shift-J", () => viewJavascript("/optimize")),
+    ("Javascript", "J", () => viewJavascript(s"/compile/$instrument")),
+    ("PreOptimizedJavascript", "Alt-J", () => viewJavascript(s"/preoptimize/$instrument")),
+    ("OptimizedJavascript", "Shift-J", () => viewJavascript(s"/optimize")),
     ("Export", "E", export)
-  ), complete)
+  ), complete, RedLogger)
 
   logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-Space"), " for autocomplete.")
   logln("- Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
@@ -126,7 +129,7 @@ class Client(){
     if (code == "") None
     else {
       log(s"Compiling with $endpoint... ")
-      val res = await(Ajax.post(endpoint + "/" + Termination.instrument, code))
+      val res = await(Ajax.post(endpoint, code))
       val result = JsVal.parse(res.responseText)
       if (result("logspam").asString != ""){
         logln(result("logspam").asString)
@@ -198,23 +201,25 @@ class Client(){
 
 @JSExport
 object Client{
-  // Monkey patch setTimeout and setInterval
+  implicit val RedLogger = new Logger(logError)
   import Page.{canvas, sandbox, logln, red, blue, green}
   dom.onerror = ({(event: dom.Event, source: js.String, fileno: js.Number, columnNumber: js.Number) =>
     dom.console.log("dom.onerror")
     Client.logError(event.toString())
   }: js.Function4[dom.Event, js.String, js.Number, js.Number, Unit]).asInstanceOf[dom.ErrorEventHandler]
 
+
   @JSExport
-  def logError(s: String) = {
+  def logError(s: String): Unit = {
     logln(red(s))
   }
+  @JSExport
   def clearTimeouts() = {
     for(i <- -100000 until 100000){
       dom.clearInterval(i)
       dom.clearTimeout(i)
     }
-    Termination.scheduleResets()
+    Client.scheduleResets()
   }
   def clear() = {
     clearTimeouts()
@@ -264,5 +269,8 @@ object Client{
     val mainFile = result("files").get(file.getOrElse(""))
     val firstFile = result("files").values(0)
     mainFile.getOrElse(firstFile)("content").asString
+  }
+  def scheduleResets() = {
+    dom.setInterval(() => Checker.reset(1000), 100)
   }
 }
