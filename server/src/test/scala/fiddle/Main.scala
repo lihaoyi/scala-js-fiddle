@@ -18,7 +18,6 @@ object Main extends TestSuite{
       .toMap
   }
   val tests = TestSuite{
-
     "simple" - {
       val res = compile("""
         object Main{
@@ -28,25 +27,37 @@ object Main extends TestSuite{
           }
         }
       """)
-
-      assert(
-        res("Main$.js").contains("Hello World"),
-        res("Main$.js").contains("Main"),
-        res("Main$.js").contains("main")
-      )
+      for(s <- Seq("Hello World", "Main", "main")){
+        assert(res("Main$.js").contains(s))
+      }
     }
     "macro" - {
-      val res = compile(
-        """
-          object Main{
-            def main() = {
-              renderln("Hello World")
-            }
+      val res = compile("""
+        object Main{
+          def main() = {
+            renderln("Hello World")
           }
-        """
-      )
+        }
+      """)
+      for(s <- Seq("Hello World", "Main", "main")){
+        assert(res("Main$.js").contains(s))
+      }
+    }
+    "async" - {
+      val res = compile("""
+        import async.Async._
+        import concurrent.Future
+        import scalajs.concurrent.JSExecutionContext.Implicits.queue
+        object Main{
+          def main() = async{
+            await(Future("Hello World"))
+          }
+        }
+      """)
       assert(
-        res("Main$.js").contains("Hello World"),
+        // it won't be in the main class, but it'll
+        // be in one of the async generated classes
+        res.values.mkString.contains("Hello World"),
         res("Main$.js").contains("Main"),
         res("Main$.js").contains("main")
       )

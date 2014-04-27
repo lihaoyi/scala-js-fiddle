@@ -20,7 +20,6 @@ object Build extends sbt.Build{
       },
       (resources in (server, Compile)) ++= Seq(
         (optimizeJS in (client, Compile)).value,
-        (packageBin in (page, Compile)).value,
         (packageBin in (runtime, Compile)).value,
         (optimizeJS in (runtime, Compile)).value
       ),
@@ -32,8 +31,9 @@ object Build extends sbt.Build{
     .settings(
       libraryDependencies ++= Seq(
         "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.3",
-        "com.scalatags" % "scalatags_2.10" % "0.2.4-JS",
-        "com.scalarx" % "scalarx_2.10" % "0.2.3-JS",
+        "com.scalatags" %% "scalatags" % "0.2.4-JS",
+        "com.scalarx" %% "scalarx" % "0.2.3-JS",
+        "com.lihaoyi" %% "upickle" % "0.1.0-JS",
         "org.scala-lang.modules.scalajs" %% "scalajs-jquery" % "0.3",
         "org.scala-lang.modules" %% "scala-async" % "0.9.0" % "provided",
         "com.lihaoyi" %% "acyclic" % "0.1.1" % "provided"
@@ -47,28 +47,21 @@ object Build extends sbt.Build{
     .settings(scalaJSSettings:_*)
     .settings(
       libraryDependencies ++= Seq(
+        "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.3",
+        "com.scalatags" % "scalatags_2.10" % "0.2.4-JS"
+      )
+    )
+  lazy val runtime = project
+    .settings(scalaJSSettings:_*)
+    .settings(
+      libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-reflect" % "2.10.3",
         "org.scalamacros" % "quasiquotes_2.10.3" % "2.0.0-M3",
         "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.3",
         "com.scalatags" % "scalatags_2.10" % "0.2.4-JS"
       ),
       addCompilerPlugin("org.scalamacros" % "paradise_2.10.3" % "2.0.0-M3"),
-      autoCompilerPlugins := true,
-      (SbtStartScript.stage in Compile) := {
-        (packageBin in Compile).value
-        (optimizeJS in Compile).value
-      }
-  )
-  lazy val runtime = project
-    .settings(scalaJSSettings:_*)
-    .settings(
-      libraryDependencies ++= Seq(
-        "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.3",
-        "com.scalatags" % "scalatags_2.10" % "0.2.4-JS"
-      ),
-      (SbtStartScript.stage in Compile) := {
-        (Keys.packageBin in Compile).value
-      }
+      autoCompilerPlugins := true
     )
 
   lazy val server = project
@@ -92,14 +85,14 @@ object Build extends sbt.Build{
         "io.spray" % "spray-httpx" % "1.3.1",
         "io.spray" % "spray-routing" % "1.3.1",
         "org.scala-lang.modules.scalajs" %% "scalajs-compiler" % "0.4.2",
-        "com.typesafe.play" %% "play-json" % "2.2.2",
         "org.scala-lang.modules.scalajs" %% "scalajs-tools" % "0.4.2",
         "org.scala-lang.modules" %% "scala-async" % "0.9.0" % "provided",
-        "com.scalatags" % "scalatags_2.10" % "0.2.4",
+        "com.scalatags" %% "scalatags" % "0.2.4",
         "com.lihaoyi" %% "acyclic" % "0.1.1" % "provided",
         "org.webjars" % "ace" % "07.31.2013",
         "org.webjars" % "jquery" % "2.1.0-2",
         "org.webjars" % "normalize.css" % "2.1.3",
+        "com.lihaoyi" %% "upickle" % "0.1.0",
         "com.lihaoyi" %% "utest" % "0.1.3" % "test",
         "org.mozilla" % "rhino" % "1.7R4" % "test"
       ),

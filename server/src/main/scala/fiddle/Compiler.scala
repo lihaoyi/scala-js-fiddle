@@ -51,6 +51,7 @@ object Compiler{
   val validJars = Seq(
     "/classpath/rt.jar",
     "/classpath/scala-library.jar",
+    "/classpath/scala-reflect.jar",
     "/classpath/scalajs-library_2.10-0.4.2-SNAPSHOT.jar",
     "/classpath/scalajs-dom_2.10-0.3.jar",
     "/classpath/scalatags_2.10-0.2.4-JS.jar",
@@ -58,12 +59,12 @@ object Compiler{
     "/classpath/scala-async_2.10-0.9.0.jar",
     "/classpath/scalaxy-loops_2.10-0.1.jar",
     "/classpath/scalaxy-privacy_2.10-0.3-SNAPSHOT.jar",
-    "/page_2.10-0.1-SNAPSHOT.jar",
     "/runtime_2.10-0.1-SNAPSHOT.jar"
   )
 
   val prelude = Source.fromInputStream(getClass.getResourceAsStream("/Prelude.scala"))
                       .mkString
+
 
   lazy val scalacClassPath = for(name <- Compiler.validJars) yield {
     println(s"Loading $name")
@@ -96,9 +97,9 @@ object Compiler{
     println("Loading scalaJSClassPath")
     val builder = new ScalaJSClasspathEntries.Builder
     for(name <- Compiler.validJars){
+      println(s"Loading $name")
       val stream = getClass.getResourceAsStream(name)
       assert(stream != null, s"stream for $name is null")
-      val size = scala.tools.nsc.io.Streamable.bytes(stream).length
       ScalaJSClasspathEntries.readEntriesInJar(
         builder,
         getClass.getResourceAsStream(name)

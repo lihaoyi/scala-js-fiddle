@@ -1,6 +1,7 @@
 package fiddle
-import scala.reflect.macros.Context
+
 import scala.language.experimental.macros
+import scala.reflect.macros.Context
 
 /**
  * Macro-powered print/println/render/renderln that takes Any* and stringifies
@@ -9,7 +10,6 @@ import scala.language.experimental.macros
  * values can be reliably passed in.
  */
 object Macros {
-
   def doPrint(s: String)(c: Context)(exprs: c.Expr[Any]*): c.Expr[Unit] = {
     import c.universe._
     val strExprs = exprs.map(e => c.resetLocalAttrs(q"""($e).toString"""))

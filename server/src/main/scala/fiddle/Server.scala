@@ -17,7 +17,6 @@ import java.net.SocketPermission
 
 import spray.client.pipelining._
 
-import play.api.libs.json._
 import scala.concurrent.Future
 import scala.tools.nsc.interpreter.Completion
 import scala.reflect.internal.util.OffsetPosition
@@ -29,6 +28,7 @@ import scala.Some
 import spray.http.HttpResponse
 import spray.http.CacheDirectives.`max-age`
 import spray.routing._
+import upickle._
 
 object Server extends SimpleRoutingApp {
   implicit val system = ActorSystem()
@@ -41,6 +41,16 @@ object Server extends SimpleRoutingApp {
 
     val clientFiles = Seq("/client-opt.js")
     val simpleCache = routeCache(maxCapacity = 1000)
+    println("Power On Self Test")
+    val res = Compiler.compile("""
+      @JSExport
+      object Main{
+        @JSExport
+        def main() = ???
+      }
+    """.getBytes)
+    val optimized = Compiler.optimize(res.toSeq.flatten.map(f => f.name -> f.toCharArray.mkString), "")
+    println("Optimized size: " + optimized.length)
     startServer("0.0.0.0", port = 8080) {
       cache(simpleCache) {
         encodeResponse(Gzip) {
@@ -61,7 +71,7 @@ object Server extends SimpleRoutingApp {
                 HttpEntity(
                   MediaTypes.`text/html`,
                   Static.page(
-                    s"Client().gistMain(${JsArray(i.map(JsString)).toString()})",
+                    s"Client().gistMain(${write(i)})",
                     clientFiles,
                     "Loading gist..."
                   )
@@ -116,9 +126,7 @@ object Server extends SimpleRoutingApp {
   def completeStuff(flag: String, offset: Int)(ctx: RequestContext): Unit = {
 //    setSecurityManager
     for(res <- Compiler.autocomplete(ctx.request.entity.asString, flag, offset)){
-      val response = JsArray(
-        res.map{case (label, name) => JsArray(Seq(label, name).map(JsString))}
-      )
+      val response = write(res)
       println(s"got autocomplete: sending $response")
       ctx.responder ! HttpResponse(
         entity=response.toString(),
@@ -140,21 +148,21 @@ object Server extends SimpleRoutingApp {
 
     val returned = res match {
       case None =>
-        Json.obj(
-          "success" -> false,
-          "logspam" -> output.mkString
-        )
+        Json.write(Js.Object(Seq(
+          "success" -> writeJs(false),
+          "logspam" -> writeJs(output.mkString)
+        )))
 
       case Some(files) =>
         val code = processor(
           files.map(f => f.name -> new String(f.toByteArray))
         )
 
-        Json.obj(
-          "success" -> true,
-          "logspam" -> output.mkString,
-          "code" -> code
-        )
+        Json.write(Js.Object(Seq(
+          "success" -> writeJs(true),
+          "logspam" -> writeJs(output.mkString),
+          "code" -> writeJs(code)
+        )))
     }
 
     ctx.responder ! HttpResponse(
