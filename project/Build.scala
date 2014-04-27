@@ -18,10 +18,12 @@ object Build extends sbt.Build{
         (SbtStartScript.stage in Compile).value
         (assembly in (server, Compile)).value
       },
-      (crossTarget in (client, Compile, optimizeJS)) := (classDirectory in (server, Compile)).value,
-      (crossTarget in (client, Compile, preoptimizeJS)) := (classDirectory in (server, Compile)).value,
-      (crossTarget in (page, Compile, packageBin)) := (classDirectory in (server, Compile)).value,
-      (crossTarget in (runtime, Compile, packageBin)) := (classDirectory in (server, Compile)).value,
+      (resources in (server, Compile)) ++= Seq(
+        (optimizeJS in (client, Compile)).value,
+        (packageBin in (page, Compile)).value,
+        (packageBin in (runtime, Compile)).value,
+        (optimizeJS in (runtime, Compile)).value
+      ),
       scalaVersion := "2.10.3"
     )
   lazy val client = project
@@ -81,9 +83,7 @@ object Build extends sbt.Build{
         url("http://repo.scala-js.org/repo/snapshots/"))(
         Resolver.ivyStylePatterns),
 
-
       libraryDependencies ++= Seq(
-        "com.lihaoyi" % "utest_2.10" % "0.1.2" % "test",
         "org.scala-lang" % "scala-compiler" % "2.10.3",
         "com.typesafe.akka" %% "akka-actor" % "2.3.0",
         "io.spray" % "spray-can" % "1.3.1",
@@ -100,7 +100,8 @@ object Build extends sbt.Build{
         "org.webjars" % "ace" % "07.31.2013",
         "org.webjars" % "jquery" % "2.1.0-2",
         "org.webjars" % "normalize.css" % "2.1.3",
-        "com.lihaoyi" %% "utest" % "0.1.3"
+        "com.lihaoyi" %% "utest" % "0.1.3" % "test",
+        "org.mozilla" % "rhino" % "1.7R4" % "test"
       ),
 
       resolvers += "Typesafe Repo" at "http://repo.typesafe.com/typesafe/releases/",

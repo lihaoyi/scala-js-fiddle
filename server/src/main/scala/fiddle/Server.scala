@@ -82,7 +82,7 @@ object Server extends SimpleRoutingApp {
             } ~
             path("extdeps" ~ (Slash ~ Segment).?){ s =>
               complete{
-                Compiler.packageJS(Compiler.classPath, s.getOrElse(""))
+                Compiler.packageJS(Compiler.scalaJSClassPath, s.getOrElse(""))
               }
             } ~
             path("export"){
@@ -134,7 +134,7 @@ object Server extends SimpleRoutingApp {
     val output = mutable.Buffer.empty[String]
 
     val res = Compiler.compile(
-      Compiler.prelude.getBytes ++ ctx.request.entity.data.toByteArray,
+      ctx.request.entity.data.toByteArray,
       output.append(_)
     )
 

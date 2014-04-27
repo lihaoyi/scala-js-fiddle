@@ -29,6 +29,8 @@ import scala.collection.mutable
 import java.util.zip.ZipInputStream
 import scala.annotation.tailrec
 import scala.Some
+import scala.tools.nsc.typechecker.Analyzer
+import scala.tools.nsc.interpreter.AbstractFileClassLoader
 
 object Compiler{
   object Nontermination{
@@ -47,6 +49,7 @@ object Compiler{
   }
 
   val validJars = Seq(
+    "/classpath/rt.jar",
     "/classpath/scala-library.jar",
     "/classpath/scalajs-library_2.10-0.4.2-SNAPSHOT.jar",
     "/classpath/scalajs-dom_2.10-0.3.jar",
@@ -61,27 +64,36 @@ object Compiler{
 
   val prelude = Source.fromInputStream(getClass.getResourceAsStream("/Prelude.scala"))
                       .mkString
-  println(s"Loaded prelude: ${prelude.length}-bytes")
 
-  val scalacClassPath = for(name <- Compiler.validJars) yield {
+  lazy val scalacClassPath = for(name <- Compiler.validJars) yield {
+    println(s"Loading $name")
     val in = new ZipInputStream(getClass.getResourceAsStream(name))
-    val entries =
-      Iterator
-        .continually(in.getNextEntry)
-        .takeWhile(_ != null)
-        .map((_, Streamable.bytes(in)))
+    val entries = Iterator
+      .continually(in.getNextEntry)
+      .takeWhile(_ != null)
+      .map((_, Streamable.bytes(in)))
 
     val dir = new VirtualDirectory(name, None)
-    for((e, data) <- entries) {
-      val f = dir.fileNamed(e.getName)
+    for{
+      (e, data) <- entries
+      if !e.isDirectory
+    } {
+      val tokens = e.getName.split("/")
+      var d = dir
+      for(t <- tokens.dropRight(1)){
+        d = d.subdirectoryNamed(t).asInstanceOf[VirtualDirectory]
+      }
+      val f = d.fileNamed(tokens.last)
       val o = f.bufferedOutput
       o.write(data)
       o.close()
     }
+    println(dir.size)
     dir
   }
 
-  val classPath = {
+  lazy val scalaJSClassPath = {
+    println("Loading scalaJSClassPath")
     val builder = new ScalaJSClasspathEntries.Builder
     for(name <- Compiler.validJars){
       val stream = getClass.getResourceAsStream(name)
@@ -164,7 +176,6 @@ object Compiler{
                     logger: String => Unit) = {
     lazy val settings = new Settings
     settings.outputDirs.setSingleOutput(vd)
-
     val writer = new Writer{
       var inner = ByteString()
       def write(cbuf: Array[Char], off: Int, len: Int): Unit = {
@@ -180,12 +191,13 @@ object Compiler{
     make(settings, reporter)
 
   }
-  def compile(src: Array[Byte], logger: String => Unit): Option[Seq[io.AbstractFile]] = {
+  def compile(src: Array[Byte], logger: String => Unit = _ => ()): Option[Seq[io.AbstractFile]] = {
 
     val ctx = new JavaContext()
     val dirs = scalacClassPath.map(new DirectoryClassPath(_, ctx)).toVector
-    val singleFile = makeFile(src)
+    val singleFile = makeFile(prelude.getBytes ++ src)
     val vd = new io.VirtualDirectory("(memory)", None)
+
     val compiler = initGlobal(
       (settings, reporter) => new scala.tools.nsc.Global(settings, reporter){ g =>
         override lazy val plugins = List[Plugin](new scala.scalajs.compiler.ScalaJSPlugin(this))
@@ -193,10 +205,34 @@ object Compiler{
           val global: g.type = g
           override def classPath: ClassPath[BinaryRepr] = new JavaClassPath(dirs, ctx)
         }
+        override lazy val analyzer = new {
+          val global: g.type = g
+        } with Analyzer{
+          override lazy val macroClassloader = new ClassLoader(this.getClass.getClassLoader){
+            val classCache = mutable.Map.empty[String, Option[Class[_]]]
+            override def findClass(name: String): Class[_] = {
+              val fileName = name.replace('.', '/') + ".class"
+              val res = classCache.getOrElseUpdate(
+                name,
+                scalacClassPath
+                  .map(_.lookupPath(fileName, false))
+                  .find(_ != null).map{f =>
+                    val data = f.toByteArray
+                    this.defineClass(name, data, 0, data.length)
+                  }
+              )
+              res match{
+                case None => throw new ClassNotFoundException()
+                case Some(cls) => cls
+              }
+            }
+          }
+        }
       },
       vd,
       logger
     )
+
     val run = new compiler.Run()
     run.compileFiles(List(singleFile))
 
@@ -243,7 +279,7 @@ object Compiler{
 
     val res = new ScalaJSOptimizer().optimize(
       ScalaJSOptimizer.Inputs(
-        classPath.copy(classFiles = classPath.classFiles ++ preppedUserFiles)
+        scalaJSClassPath.copy(classFiles = scalaJSClassPath.classFiles ++ preppedUserFiles)
       ),
       ScalaJSOptimizer.OutputConfig("output.js"),
       Compiler.IgnoreLogger
