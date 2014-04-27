@@ -1,12 +1,12 @@
 package fiddle
 import acyclic.file
-import scala.tools.nsc.Settings
-import java.net.URLClassLoader
+import scala.tools.nsc.{Global, Settings}
+import java.net.{URL, URLClassLoader}
 import scala.reflect.io
-import scala.tools.nsc.util.ClassPath
+import scala.tools.nsc.util._
 import java.io._
 import akka.util.ByteString
-import scala.tools.nsc.reporters.ConsoleReporter
+import scala.tools.nsc.reporters.{Reporter, ConsoleReporter}
 import scala.tools.nsc.plugins.Plugin
 import scala.concurrent.Future
 import scala.async.Async.{async, await}
@@ -20,6 +20,15 @@ import scala.scalajs.tools.optimizer.{ScalaJSClosureOptimizer, ScalaJSOptimizer}
 import scala.scalajs.tools.io.{VirtualScalaJSClassfile, VirtualFile, VirtualJSFile}
 import scala.scalajs.tools.logging.Level
 import scala.scalajs.tools.classpath.ScalaJSClasspathEntries
+import scala.tools.nsc.backend.JavaPlatform
+import scala.tools.util.PathResolver
+import scala.reflect.io._
+import scala.tools.nsc.util.ClassPath.JavaContext
+import scala.Some
+import scala.collection.mutable
+import java.util.zip.ZipInputStream
+import scala.annotation.tailrec
+import scala.Some
 
 object Compiler{
   object Nontermination{
@@ -38,6 +47,7 @@ object Compiler{
   }
 
   val validJars = Seq(
+    "/classpath/scala-library.jar",
     "/classpath/scalajs-library_2.10-0.4.2-SNAPSHOT.jar",
     "/classpath/scalajs-dom_2.10-0.3.jar",
     "/classpath/scalatags_2.10-0.2.4-JS.jar",
@@ -51,12 +61,32 @@ object Compiler{
 
   val prelude = Source.fromInputStream(getClass.getResourceAsStream("/Prelude.scala"))
                       .mkString
+  println(s"Loaded prelude: ${prelude.length}-bytes")
+
+  val scalacClassPath = for(name <- Compiler.validJars) yield {
+    val in = new ZipInputStream(getClass.getResourceAsStream(name))
+    val entries =
+      Iterator
+        .continually(in.getNextEntry)
+        .takeWhile(_ != null)
+        .map((_, Streamable.bytes(in)))
+
+    val dir = new VirtualDirectory(name, None)
+    for((e, data) <- entries) {
+      val f = dir.fileNamed(e.getName)
+      val o = f.bufferedOutput
+      o.write(data)
+      o.close()
+    }
+    dir
+  }
 
   val classPath = {
     val builder = new ScalaJSClasspathEntries.Builder
     for(name <- Compiler.validJars){
       val stream = getClass.getResourceAsStream(name)
       assert(stream != null, s"stream for $name is null")
+      val size = scala.tools.nsc.io.Streamable.bytes(stream).length
       ScalaJSClasspathEntries.readEntriesInJar(
         builder,
         getClass.getResourceAsStream(name)
@@ -64,6 +94,7 @@ object Compiler{
     }
     builder.result  
   }
+
 
   def prep(virtualFiles: Seq[(String, String)]) = {
     val jsFiles = virtualFiles.filter(_._1.endsWith(".js")).toMap
@@ -88,13 +119,12 @@ object Compiler{
     Future { func(r) ; r.get.left.get }
   }
 
-  def autocomplete(code: String, flag: String, pos: Int, validJars: Seq[String]): Future[List[(String, String)]] = async {
+  def autocomplete(code: String, flag: String, pos: Int): Future[List[(String, String)]] = async {
     val vd = new io.VirtualDirectory("(memory)", None)
     // global can be reused, just create new runs for new compiler invocations
     val compiler = initGlobal(
       (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter),
       vd,
-      validJars,
       s => ()
     )
 
@@ -131,14 +161,9 @@ object Compiler{
 
   def initGlobal[T](make: (Settings, ConsoleReporter) => T,
                     vd: io.VirtualDirectory,
-                    validJars: Seq[String],
                     logger: String => Unit) = {
     lazy val settings = new Settings
-    val loader = getClass.getClassLoader.asInstanceOf[URLClassLoader]
-    val entries = loader.getURLs.map(_.getPath)
-    val classpathEntries = validJars.map(getClass.getResource(_).getPath.replace("%20", " "))
     settings.outputDirs.setSingleOutput(vd)
-    settings.classpath.value = ClassPath.join(classpathEntries ++ entries: _*)
 
     val writer = new Writer{
       var inner = ByteString()
@@ -155,18 +180,21 @@ object Compiler{
     make(settings, reporter)
 
   }
-  def compile(src: Array[Byte],
-              validJars: Seq[String],
-              logger: String => Unit): Option[Seq[io.AbstractFile]] = {
+  def compile(src: Array[Byte], logger: String => Unit): Option[Seq[io.AbstractFile]] = {
 
+    val ctx = new JavaContext()
+    val dirs = scalacClassPath.map(new DirectoryClassPath(_, ctx)).toVector
     val singleFile = makeFile(src)
     val vd = new io.VirtualDirectory("(memory)", None)
     val compiler = initGlobal(
-      (settings, reporter) => new scala.tools.nsc.Global(settings, reporter){
+      (settings, reporter) => new scala.tools.nsc.Global(settings, reporter){ g =>
         override lazy val plugins = List[Plugin](new scala.scalajs.compiler.ScalaJSPlugin(this))
+        override lazy val platform: ThisPlatform = new JavaPlatform{
+          val global: g.type = g
+          override def classPath: ClassPath[BinaryRepr] = new JavaClassPath(dirs, ctx)
+        }
       },
       vd,
-      validJars,
       logger
     )
     val run = new compiler.Run()

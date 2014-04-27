@@ -41,7 +41,7 @@ object Server extends SimpleRoutingApp {
 
     val clientFiles = Seq("/client-opt.js")
     val simpleCache = routeCache(maxCapacity = 1000)
-    startServer("localhost", port = 8080) {
+    startServer("0.0.0.0", port = 8080) {
       cache(simpleCache) {
         encodeResponse(Gzip) {
           get {
@@ -115,7 +115,7 @@ object Server extends SimpleRoutingApp {
 
   def completeStuff(flag: String, offset: Int)(ctx: RequestContext): Unit = {
 //    setSecurityManager
-    for(res <- Compiler.autocomplete(ctx.request.entity.asString, flag, offset, Compiler.validJars)){
+    for(res <- Compiler.autocomplete(ctx.request.entity.asString, flag, offset)){
       val response = JsArray(
         res.map{case (label, name) => JsArray(Seq(label, name).map(JsString))}
       )
@@ -135,7 +135,6 @@ object Server extends SimpleRoutingApp {
 
     val res = Compiler.compile(
       Compiler.prelude.getBytes ++ ctx.request.entity.data.toByteArray,
-      Compiler.validJars,
       output.append(_)
     )
 
