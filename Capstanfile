@@ -1,0 +1,28 @@
+# Copyright (C) 2014 Cloudius Systems, Ltd.
+#
+# This work is open source software, licensed under the terms of the
+# BSD license as described in the LICENSE file in the top-level directory.
+
+#
+# Name of the base image.  Capstan will download this automatically from
+# Cloudius S3 repository.
+#
+base: cloudius/osv-openjdk
+
+#
+# The command line passed to OSv to start up the application.
+#
+cmdline: /java.so io.osv.MultiJarLoader -mains /javamains
+
+#
+# The command to use to build the application.  In this example, we just use
+# "mvn package".
+#
+build: sbt server/assembly 
+
+#
+# List of files that are included in the generated image.
+#
+files:
+  /capstan-example-java.jar: server/target/scala-2.10/server-assembly-0.1-SNAPSHOT.jar
+  /javamains: javamains
