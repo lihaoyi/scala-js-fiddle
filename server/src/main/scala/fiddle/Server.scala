@@ -92,7 +92,7 @@ object Server extends SimpleRoutingApp {
             } ~
             path("extdeps" ~ (Slash ~ Segment).?){ s =>
               complete{
-                Compiler.packageJS(Compiler.scalaJSClassPath, s.getOrElse(""))
+                Compiler.packageJS(Classpath.scalajs, s.getOrElse(""))
               }
             } ~
             path("export"){

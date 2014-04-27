@@ -22,7 +22,7 @@ object Build extends sbt.Build{
         (optimizeJS in (client, Compile)).value,
         (packageBin in (runtime, Compile)).value,
         (optimizeJS in (runtime, Compile)).value
-      ),
+      ) ++ (managedClasspath in (runtime, Compile)).value.map(_.data),
       scalaVersion := "2.10.3"
     )
   lazy val client = project
@@ -54,11 +54,15 @@ object Build extends sbt.Build{
   lazy val runtime = project
     .settings(scalaJSSettings:_*)
     .settings(
+      resolvers += Resolver.sonatypeRepo("snapshots"),
       libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-reflect" % "2.10.3",
         "org.scalamacros" % "quasiquotes_2.10.3" % "2.0.0-M3",
         "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.3",
-        "com.scalatags" % "scalatags_2.10" % "0.2.4-JS"
+        "com.scalatags" % "scalatags_2.10" % "0.2.4-JS",
+        "org.scala-lang.modules" %% "scala-async" % "0.9.0" % "provided",
+        "com.scalarx" %% "scalarx" % "0.2.3-JS",
+        "com.nativelibs4java" %% "scalaxy-loops" % "0.3-SNAPSHOT"
       ),
       addCompilerPlugin("org.scalamacros" % "paradise_2.10.3" % "2.0.0-M3"),
       autoCompilerPlugins := true

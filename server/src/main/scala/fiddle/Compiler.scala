@@ -30,9 +30,15 @@ import java.util.zip.ZipInputStream
 import scala.annotation.tailrec
 import scala.Some
 import scala.tools.nsc.typechecker.Analyzer
-import scala.tools.nsc.interpreter.AbstractFileClassLoader
 
+/**
+ * Handles the interaction between scala-js-fiddle and
+ * scalac/scalajs-tools to compile and optimize code submitted by users.
+ */
 object Compiler{
+  val prelude =
+    Source.fromInputStream(getClass.getResourceAsStream("/Prelude.scala"))
+          .mkString
   object Nontermination{
     val functionLiteral = "function\\([^\"\\n]*?\\) \\{(?=\\n)"
     val whileTrue = "\\n[^\"\\n]*while \\(.*(?=\\n)"
@@ -47,67 +53,6 @@ object Compiler{
       }
     }
   }
-
-  val validJars = Seq(
-    "/classpath/rt.jar",
-    "/classpath/scala-library.jar",
-    "/classpath/scala-reflect.jar",
-    "/classpath/scalajs-library_2.10-0.4.2-SNAPSHOT.jar",
-    "/classpath/scalajs-dom_2.10-0.3.jar",
-    "/classpath/scalatags_2.10-0.2.4-JS.jar",
-    "/classpath/scalarx_2.10-0.2.3-JS.jar",
-    "/classpath/scala-async_2.10-0.9.0.jar",
-    "/classpath/scalaxy-loops_2.10-0.1.jar",
-    "/classpath/scalaxy-privacy_2.10-0.3-SNAPSHOT.jar",
-    "/runtime_2.10-0.1-SNAPSHOT.jar"
-  )
-
-  val prelude = Source.fromInputStream(getClass.getResourceAsStream("/Prelude.scala"))
-                      .mkString
-
-
-  lazy val scalacClassPath = for(name <- Compiler.validJars) yield {
-    println(s"Loading $name")
-    val in = new ZipInputStream(getClass.getResourceAsStream(name))
-    val entries = Iterator
-      .continually(in.getNextEntry)
-      .takeWhile(_ != null)
-      .map((_, Streamable.bytes(in)))
-
-    val dir = new VirtualDirectory(name, None)
-    for{
-      (e, data) <- entries
-      if !e.isDirectory
-    } {
-      val tokens = e.getName.split("/")
-      var d = dir
-      for(t <- tokens.dropRight(1)){
-        d = d.subdirectoryNamed(t).asInstanceOf[VirtualDirectory]
-      }
-      val f = d.fileNamed(tokens.last)
-      val o = f.bufferedOutput
-      o.write(data)
-      o.close()
-    }
-    println(dir.size)
-    dir
-  }
-
-  lazy val scalaJSClassPath = {
-    println("Loading scalaJSClassPath")
-    val builder = new ScalaJSClasspathEntries.Builder
-    for(name <- Compiler.validJars){
-      println(s"Loading $name")
-      val stream = getClass.getResourceAsStream(name)
-      assert(stream != null, s"stream for $name is null")
-      ScalaJSClasspathEntries.readEntriesInJar(
-        builder,
-        getClass.getResourceAsStream(name)
-      )
-    }
-    builder.result  
-  }
-
 
   def prep(virtualFiles: Seq[(String, String)]) = {
     val jsFiles = virtualFiles.filter(_._1.endsWith(".js")).toMap
@@ -176,6 +121,7 @@ object Compiler{
                     vd: io.VirtualDirectory,
                     logger: String => Unit) = {
     lazy val settings = new Settings
+    settings.usejavacp.value = true
     settings.outputDirs.setSingleOutput(vd)
     val writer = new Writer{
       var inner = ByteString()
@@ -195,7 +141,7 @@ object Compiler{
   def compile(src: Array[Byte], logger: String => Unit = _ => ()): Option[Seq[io.AbstractFile]] = {
 
     val ctx = new JavaContext()
-    val dirs = scalacClassPath.map(new DirectoryClassPath(_, ctx)).toVector
+    val dirs = Classpath.scalac.map(new DirectoryClassPath(_, ctx)).toVector
     val singleFile = makeFile(prelude.getBytes ++ src)
     val vd = new io.VirtualDirectory("(memory)", None)
 
@@ -215,7 +161,7 @@ object Compiler{
               val fileName = name.replace('.', '/') + ".class"
               val res = classCache.getOrElseUpdate(
                 name,
-                scalacClassPath
+                Classpath.scalac
                   .map(_.lookupPath(fileName, false))
                   .find(_ != null).map{f =>
                     val data = f.toByteArray
@@ -280,7 +226,7 @@ object Compiler{
 
     val res = new ScalaJSOptimizer().optimize(
       ScalaJSOptimizer.Inputs(
-        scalaJSClassPath.copy(classFiles = scalaJSClassPath.classFiles ++ preppedUserFiles)
+        Classpath.scalajs.copy(classFiles = Classpath.scalajs.classFiles ++ preppedUserFiles)
       ),
       ScalaJSOptimizer.OutputConfig("output.js"),
       Compiler.IgnoreLogger
