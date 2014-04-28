@@ -16,23 +16,23 @@ object Classpath {
 
   lazy val loadedFiles = {
 
-    val resourceJars = Seq(
-      "/scala-library-2.10.4.jar",
-      "/scala-reflect-2.10.4.jar",
-      "/scalajs-library_2.10-0.4.3.jar",
-      "/scalajs-dom_2.10-0.3.jar",
-      "/scalatags_2.10-0.2.4-JS.jar",
-      "/scalarx_2.10-0.2.3-JS.jar",
-      "/scala-async_2.10-0.9.0.jar",
-      "/scalaxy-loops_2.10-0.3-SNAPSHOT.jar",
-      "/runtime_2.10-0.1-SNAPSHOT.jar"
-    )
-
-    val jars = for (name <- resourceJars) yield {
+    val jarFiles = for {
+      name <- Seq(
+        "/scala-library-2.10.4.jar",
+        "/scala-reflect-2.10.4.jar",
+        "/scalajs-library_2.10-0.4.3.jar",
+        "/scalajs-dom_2.10-0.3.jar",
+        "/scalatags_2.10-0.2.4-JS.jar",
+        "/scalarx_2.10-0.2.3-JS.jar",
+        "/scala-async_2.10-0.9.0.jar",
+        "/scalaxy-loops_2.10-0.3-SNAPSHOT.jar",
+        "/runtime_2.10-0.1-SNAPSHOT.jar"
+      )
+    } yield {
       name -> Streamable.bytes(getClass.getResourceAsStream(name))
     }
 
-    val boots = for {
+    val bootFiles = for {
       path <- System.getProperty("sun.boot.class.path").split(":")
       val vfile = scala.reflect.io.File(path)
       if vfile.exists
@@ -40,7 +40,7 @@ object Classpath {
       path.split("/").last -> vfile.toByteArray()
     }
 
-    jars ++ boots
+    jarFiles ++ bootFiles
   }
 
   lazy val scalac = for((name, bytes) <- loadedFiles) yield {
