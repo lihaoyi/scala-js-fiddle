@@ -7,12 +7,22 @@ Source code for [www.scala-js-fiddle.com](http://www.scala-js-fiddle.com). To de
 sbt "~; server/re-start;"
 ```
 
-This will start the server at `localhost:8080`, which you can go to and immediately start the live editing process.
-
-When you're done with the development, you can run:
+You can also run
 
 ```
-sbt clean compile stage; ./server/target/start
+sbt stage; ./server/target/start
 ```
 
-To stage and run the compiled code independently of SBT.
+To stage and run without SBT,
+
+```
+sbt assembly; java -jar server/target/scala-2.10/server-assembly-0.1-SNAPSHOT.jar
+```
+
+To package as a fat jar and run, or
+
+```
+capstan build -p vmw; capstan run -p vmw
+```
+
+To bundle as an image using OSv and run it under VMware.

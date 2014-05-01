@@ -13,7 +13,6 @@ import scala.scalajs.tools.classpath.ScalaJSClasspathEntries
  * scala-compile and scalajs-tools
  */
 object Classpath {
-
   lazy val loadedFiles = {
 
     val jarFiles = for {
@@ -33,9 +32,10 @@ object Classpath {
     }
 
     val bootFiles = for {
-      path <- System.getProperty("sun.boot.class.path").split(":")
+      prop <- Seq(/*"java.class.path", */"sun.boot.class.path")
+      path <- System.getProperty(prop).split(":")
       val vfile = scala.reflect.io.File(path)
-      if vfile.exists
+      if vfile.exists && !vfile.isDirectory
     } yield {
       path.split("/").last -> vfile.toByteArray()
     }

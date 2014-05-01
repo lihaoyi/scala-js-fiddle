@@ -13,7 +13,7 @@ import java.security.{AccessControlException, Permission}
 import java.io.FilePermission
 import java.util.PropertyPermission
 import java.lang.reflect.ReflectPermission
-import java.net.SocketPermission
+import java.net.{InetAddress, SocketPermission}
 
 import spray.client.pipelining._
 
@@ -50,7 +50,8 @@ object Server extends SimpleRoutingApp {
       }
     """.getBytes)
     val optimized = Compiler.optimize(res.toSeq.flatten.map(f => f.name -> f.toCharArray.mkString), "")
-    println("Optimized size: " + optimized.length)
+    println("Power On Self Test complete: " + optimized.length + " bytes")
+    println(InetAddress.getLocalHost().getHostAddress)
     startServer("0.0.0.0", port = 8080) {
       cache(simpleCache) {
         encodeResponse(Gzip) {
