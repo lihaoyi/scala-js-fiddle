@@ -52,7 +52,9 @@ object Classpath {
 
     jarFiles ++ bootFiles
   }
-
+  /**
+   * The loaded files shaped for Scalac to use
+   */
   lazy val scalac = for((name, bytes) <- loadedFiles) yield {
     println(s"Loading $name")
     val in = new ZipInputStream(new ByteArrayInputStream(bytes))
@@ -79,7 +81,9 @@ object Classpath {
     println(dir.size)
     dir
   }
-
+  /**
+   * The loaded files shaped for Scala-Js-Tools to use
+   */
   lazy val scalajs = {
     println("Loading scalaJSClassPath")
     def builder = new AbstractJarLibClasspathBuilder{

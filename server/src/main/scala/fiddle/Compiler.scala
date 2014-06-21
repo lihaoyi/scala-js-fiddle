@@ -37,11 +37,32 @@ object Compiler{
 
   val blacklist = Seq("<init>")
 
+  /**
+   * Converts Scalac's weird Future type 
+   * into a standard scala.concurrent.Future
+   */
   def toFuture[T](func: Response[T] => Unit): Future[T] = {
     val r = new Response[T]
     Future { func(r) ; r.get.left.get }
   }
-  trait MagicGlobal { g: scala.tools.nsc.Global =>
+
+  /**
+   * Converts a bunch of bytes into Scalac's weird VirtualFile class
+   */
+  def makeFile(src: Array[Byte]) = {
+    val singleFile = new io.VirtualFile("Main.scala")
+    val output = singleFile.output
+    output.write(src)
+    output.close()
+    singleFile
+  }
+
+  /**
+   * Mixed in to make a Scala compiler run entirely in-memory,
+   * loading its classpath and running macros from pre-loaded
+   * in-memory files
+   */
+  trait InMemoryGlobal { g: scala.tools.nsc.Global =>
     def ctx: JavaContext
     def dirs: Vector[DirectoryClassPath]
     override lazy val plugins = List[Plugin](new scala.scalajs.compiler.ScalaJSPlugin(this))
@@ -73,19 +94,45 @@ object Compiler{
       }
     }
   }
-  def autocomplete(code: String, flag: String, pos: Int): Future[List[(String, String)]] = async {
+
+  /**
+   * Code to initialize random bits and pieces that are needed
+   * for the Scala compiler to function, common between the
+   * normal and presentation compiler
+   */
+  def initGlobalBits(logger: String => Unit)= {
+    val vd = new io.VirtualDirectory("(memory)", None)
     val jCtx = new JavaContext()
     val jDirs = Classpath.scalac.map(new DirectoryClassPath(_, jCtx)).toVector
-    val vd = new io.VirtualDirectory("(memory)", None)
+    lazy val settings = new Settings
+
+    settings.outputDirs.setSingleOutput(vd)
+    val writer = new Writer{
+      var inner = ByteString()
+      def write(cbuf: Array[Char], off: Int, len: Int): Unit = {
+        inner = inner ++ ByteString.fromArray(cbuf.map(_.toByte), off, len)
+      }
+      def flush(): Unit = {
+        logger(inner.utf8String)
+        inner = ByteString()
+      }
+      def close(): Unit = ()
+    }
+    val reporter = new ConsoleReporter(settings, scala.Console.in, new PrintWriter(writer))
+    (settings, reporter, vd, jCtx, jDirs)
+
+  }
+
+  def autocomplete(code: String, flag: String, pos: Int): Future[List[(String, String)]] = async {
+
+
+
     // global can be reused, just create new runs for new compiler invocations
-    val compiler = initGlobal(
-      (settings, reporter) => new nsc.interactive.Global(settings, reporter) with MagicGlobal{
-        def ctx = jCtx
-        def dirs = jDirs
-      },
-      vd,
-      _ => ()
-    )
+    val (settings, reporter, vd, jCtx, jDirs) = initGlobalBits(_ => ())
+    val compiler = new nsc.interactive.Global(settings, reporter) with InMemoryGlobal{
+      def ctx = jCtx
+      def dirs = jDirs
+    }
 
     val file      = new BatchSourceFile(makeFile(prelude.getBytes ++ code.getBytes), prelude + code)
     val position  = new OffsetPosition(file, pos + prelude.length)
@@ -105,58 +152,22 @@ object Compiler{
         ).find(_ != "").getOrElse("--Unknown--")
       }
       maybeMems.map((x: compiler.Member) => sig(x) -> x.sym.decodedName)
-               .filter(!blacklist.contains(_))
-               .distinct
+        .filter(!blacklist.contains(_))
+        .distinct
     }
     compiler.askShutdown()
     res
   }
 
-  def makeFile(src: Array[Byte]) = {
-    val singleFile = new io.VirtualFile("Main.scala")
-    val output = singleFile.output
-    output.write(src)
-    output.close()
-    singleFile
-  }
-
-  def initGlobal[T](make: (Settings, ConsoleReporter) => T,
-                    vd: io.VirtualDirectory,
-                    logger: String => Unit) = {
-    lazy val settings = new Settings
-
-    settings.outputDirs.setSingleOutput(vd)
-    val writer = new Writer{
-      var inner = ByteString()
-      def write(cbuf: Array[Char], off: Int, len: Int): Unit = {
-        inner = inner ++ ByteString.fromArray(cbuf.map(_.toByte), off, len)
-      }
-      def flush(): Unit = {
-        logger(inner.utf8String)
-        inner = ByteString()
-      }
-      def close(): Unit = ()
-    }
-    val reporter = new ConsoleReporter(settings, scala.Console.in, new PrintWriter(writer))
-    make(settings, reporter)
-
-  }
-
   def compile(src: Array[Byte], logger: String => Unit = _ => ()): Option[PartialIRClasspath] = {
 
-    val jCtx = new JavaContext()
-    val jDirs = Classpath.scalac.map(new DirectoryClassPath(_, jCtx)).toVector
     val singleFile = makeFile(prelude.getBytes ++ src)
-    val vd = new io.VirtualDirectory("(memory)", None)
 
-    val compiler = initGlobal(
-      (settings, reporter) => new nsc.Global(settings, reporter) with MagicGlobal{
-        def ctx = jCtx
-        def dirs = jDirs
-      },
-      vd,
-      logger
-    )
+    val (settings, reporter, vd, jCtx, jDirs) = initGlobalBits(logger)
+    val compiler = new nsc.Global(settings, reporter) with InMemoryGlobal{
+      def ctx = jCtx
+      def dirs = jDirs
+    }
 
     val run = new compiler.Run()
     run.compileFiles(List(singleFile))
@@ -196,7 +207,7 @@ object Compiler{
     p.allCode.map(_.content).mkString
   }
 
-  def fastOpt(userFiles: PartialIRClasspath) = {
+  def fastOpt(userFiles: PartialIRClasspath): CompleteCIClasspath = {
     new ScalaJSOptimizer().optimizeCP(
       ScalaJSOptimizer.Inputs(Classpath.scalajs.merge(userFiles).resolve()),
       ScalaJSOptimizer.OutputConfig(WritableMemVirtualJSFile("output.js")),
@@ -204,7 +215,7 @@ object Compiler{
     )
   }
 
-  def fullOpt(userFiles: CompleteCIClasspath) = {
+  def fullOpt(userFiles: CompleteCIClasspath): CompleteNCClasspath = {
     new ScalaJSClosureOptimizer().optimizeCP(
       ScalaJSClosureOptimizer.Inputs(userFiles),
       ScalaJSClosureOptimizer.OutputConfig(WritableMemVirtualJSFile("output.js")),
