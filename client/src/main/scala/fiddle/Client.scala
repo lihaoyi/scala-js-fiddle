@@ -209,7 +209,7 @@ object Client{
 
   @JSExport
   def gistMain(args: js.Array[String]): Unit = task*async{
-
+    dom.console.log("gistMain")
     Editor.initEditor
     val (gistId, fileName) = args.toSeq match{
       case Nil => ("9759723", Some("LandingPage.scala"))
@@ -227,8 +227,9 @@ object Client{
   def importMain(): Unit = {
     clear()
     val client = new Client()
-    client.command.update(("", "/compile"))
+    client.command.update(("", "/fastOpt"))
     js.eval(Page.compiled)
+    js.eval("ScalaJSExample().main();")
   }
 
   def load(gistId: String, file: Option[String]): Future[String] = {

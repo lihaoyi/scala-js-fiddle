@@ -67,11 +67,10 @@ object Static{
           )
         )
       ),
-      div(
+      script(
         id:="compiled",
-        display:="none",
-        compiled
+        raw(compiled)
       ),
-      script(raw(s"\nPage2=Page();\n$arg"))
+      script(raw(arg))
     ).toString()
 }

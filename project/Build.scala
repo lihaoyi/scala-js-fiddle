@@ -6,12 +6,14 @@ import com.typesafe.sbt.SbtStartScript
 import sbtassembly.Plugin._
 import AssemblyKeys._
 import spray.revolver.RevolverPlugin._
+import com.lihaoyi.workbench.Plugin._
 object Build extends sbt.Build{
 
   lazy val root = project.in(file("."))
     .aggregate(client, page, server, runtime)
     .settings(assemblySettings:_*)
     .settings(
+      bootSnippet := "",
       SbtStartScript.stage in Compile := Unit,
       (assembly in Compile) := {
         (SbtStartScript.stage in Compile).value
@@ -19,12 +21,11 @@ object Build extends sbt.Build{
       },
       (resources in (server, Compile)) ++= {
         (fullOptJS in (client, Compile)).value
-        val a: Seq[File] = Seq(
+        (managedClasspath in (runtime, Compile)).value.map(_.data) ++ Seq(
           (packageBin in (runtime, Compile)).value,
+          (packageBin in (page, Compile)).value,
           (artifactPath in (client, Compile, fullOptJS)).value
         )
-        val b: Seq[File] = (managedClasspath in (runtime, Compile)).value.map(_.data)
-        a ++ b
       },
       scalaVersion := "2.10.3"
     )
@@ -64,8 +65,8 @@ object Build extends sbt.Build{
         "org.scala-lang.modules.scalajs" %%% "scalajs-dom" % "0.6",
         "com.scalatags" %%% "scalatags" % "0.3.0",
         "org.scala-lang.modules" %% "scala-async" % "0.9.0" % "provided",
-        "com.scalarx" %%% "scalarx" % "0.2.5",
-        "com.nativelibs4java" %% "scalaxy-loops" % "0.3-SNAPSHOT"
+        "com.scalarx" %%% "scalarx" % "0.2.5"/*,
+        "com.nativelibs4java" %% "scalaxy-loops" % "0.3-SNAPSHOT"*/
       ),
       addCompilerPlugin("org.scalamacros" % "paradise_2.10.3" % "2.0.0-M3"),
       autoCompilerPlugins := true

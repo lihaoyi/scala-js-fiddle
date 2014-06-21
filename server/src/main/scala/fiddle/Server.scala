@@ -34,7 +34,7 @@ object Server extends SimpleRoutingApp {
         @JSExport
         def main() = "omgggg"
       }
-    """.getBytes)
+    """.getBytes, println)
     val optimized = res.get |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export
 
     println("Power On Self Test complete: " + optimized.length + " bytes")
@@ -82,7 +82,7 @@ object Server extends SimpleRoutingApp {
             } ~
             path("export"){
               formFields("compiled", "source"){
-                renderCode(_, Seq("/page-opt.js"), _, "Page().exportMain()", analytics = false)
+                renderCode(_, Nil, _, "Page().exportMain(); ScalaJSExample().main();", analytics = false)
               }
             } ~
             path("import"){

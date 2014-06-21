@@ -6,7 +6,6 @@ import org.scalajs.dom
 import scalatags.JsDom.all._
 import scalatags.JsDom._
 
-
 /**
  * API for things that belong to the page, and are useful to both the fiddle
  * client, user code as well as exported read-only pages.
@@ -19,31 +18,25 @@ object Page{
   def green = span(color:="#aaffaa")
 
   def sandbox = Util.getElem[dom.HTMLDivElement]("sandbox")
-  @JSExport
   def canvas = Util.getElem[dom.HTMLCanvasElement]("canvas")
-  @JSExport
   def renderer = canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
   def output = Util.getElem[dom.HTMLDivElement]("output")
   def logspam = Util.getElem[dom.HTMLPreElement]("logspam")
   def source = Util.getElem[dom.HTMLDivElement]("source")
 
-  @JSExport
   def println(ss: Node*) = {
     print(div(ss: _*))
   }
 
-  @JSExport
   def print(ss: Node*) = {
     ss.foreach(_.applyTo(output))
     output.scrollTop = output.scrollHeight - output.clientHeight
   }
 
-  @JSExport
   def clear() = {
     output.innerHTML = ""
   }
 
-  @JSExport
   def scroll(px: Int) = {
     dom.console.log("Scrolling", px)
     output.scrollTop = output.scrollTop + px
@@ -83,7 +76,6 @@ object Page{
       )
     }
 
-    js.eval(compiled)
   }
 
   /**
