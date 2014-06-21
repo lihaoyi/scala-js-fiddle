@@ -20,11 +20,11 @@ object Build extends sbt.Build{
         (assembly in (server, Compile)).value
       },
       (resources in (server, Compile)) ++= {
-        (fullOptJS in (client, Compile)).value
+        (fastOptJS in (client, Compile)).value
         (managedClasspath in (runtime, Compile)).value.map(_.data) ++ Seq(
           (packageBin in (runtime, Compile)).value,
           (packageBin in (page, Compile)).value,
-          (artifactPath in (client, Compile, fullOptJS)).value
+          (artifactPath in (client, Compile, fastOptJS)).value
         )
       },
       scalaVersion := "2.10.3"

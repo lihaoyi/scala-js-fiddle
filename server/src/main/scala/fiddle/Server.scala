@@ -25,7 +25,7 @@ object Server extends SimpleRoutingApp {
       case RequestContext(HttpRequest(_, uri, _, entity, _), _, _) => (uri, entity)
     }
 
-    val clientFiles = Seq("/client-opt.js")
+    val clientFiles = Seq("/client-fastopt.js")
     val simpleCache = routeCache(maxCapacity = 1000)
     println("Power On Self Test")
     val res = Compiler.compile("""
@@ -87,7 +87,7 @@ object Server extends SimpleRoutingApp {
             } ~
             path("import"){
               formFields("compiled", "source"){
-                renderCode(_, clientFiles, _, "Client().importMain()", analytics = true)
+                renderCode(_, clientFiles, _, "Client().importMain(); ScalaJSExample().main();", analytics = true)
               }
             } ~
             path("complete" / Segment / IntNumber){

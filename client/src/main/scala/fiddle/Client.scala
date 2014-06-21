@@ -14,7 +14,6 @@ import Page.fiddleUrl
 import JsVal.jsVal2jsAny
 import Client.RedLogger
 import scala.Some
-import scala.util.{Failure, Success}
 
 @JSExport
 object Checker{
@@ -66,19 +65,17 @@ class Client(){
 
     Checker.reset(1000)
     try{
-      js.eval(s"""(function(ScalaJS){
+      js.eval(s"""(function(){
         console.log("THIS", this)
         $s;
         ScalaJSExample().main();
-      })""").asInstanceOf[js.Function1[js.Any, js.Any]](storedScalaJS)
+      })()""")
     }catch{case e: Throwable =>
       Client.logError(e.toString())
     }
   }
   val instrument = "c"
   var compileEndpoint = s"/fastOpt"
-
-  var storedScalaJS: js.Any = ""
   val compilationLoop = task*async{
     val (code, cmd) = await(command())
     await(compile(code, cmd)).foreach(exec)
@@ -228,8 +225,6 @@ object Client{
     clear()
     val client = new Client()
     client.command.update(("", "/fastOpt"))
-    js.eval(Page.compiled)
-    js.eval("ScalaJSExample().main();")
   }
 
   def load(gistId: String, file: Option[String]): Future[String] = {
