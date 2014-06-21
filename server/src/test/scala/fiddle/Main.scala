@@ -16,7 +16,7 @@ object Main extends TestSuite{
   def compile(s: String) = {
     Compiler.compile(s.getBytes, println).get
   }
-  val tests = TestSuite{
+  val tests = TestSuite {
     "compile" - {
       "simple" - {
         val res = compile(
@@ -34,10 +34,11 @@ object Main extends TestSuite{
       }
 
       "macro" - {
-        val res = compile( """
+        val res = compile(
+          """
           object Main{
             def main() = {
-              renderln("Hello World")
+              println("Hello World")
             }
           }
         """) |> Compiler.export
@@ -46,7 +47,8 @@ object Main extends TestSuite{
         }
       }
       "async" - {
-        val res = compile( """
+        val res = compile(
+          """
           import async.Async._
           import concurrent.Future
           import scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -63,52 +65,77 @@ object Main extends TestSuite{
         )
       }
     }
-    "fastOpt" - {
-      val res = compile("""
-      @JSExport
-      object Main{
-        def iAmDead() = "lolzz"
-        def iAmLive() = "wtfff"
+
+    "optimize" - {
+      "fastOpt" - {
+        val res = compile(
+          """
         @JSExport
-        def main() = {
-          Predef.println("Hello World")
-          iAmLive()
-          "omg"
+        object Main{
+          def iAmDead() = "lolzz"
+          def iAmLive() = "wtfff"
+          @JSExport
+          def main() = {
+            Predef.println("Hello World")
+            iAmLive()
+            "omg"
+          }
         }
+        """) |> Compiler.fastOpt  |> Compiler.export
+        for(s <- Seq("Main", "Hello World", "iAmLive", "wtfff", "main")){
+          assert(res.contains(s))
+        }
+        for(s <- Seq("iAmDead", "lolzz")){
+          assert(!res.contains(s))
+        }
+        // fastOpt with such a small program should be less than 2mb
+        assert(res.length < 2 * 1024 * 1024)
       }
-      """) |> Compiler.fastOpt  |> Compiler.export
-      for(s <- Seq("Main", "Hello World", "iAmLive", "wtfff", "main")){
-        assert(res.contains(s))
-      }
-      for(s <- Seq("iAmDead", "lolzz")){
-        assert(!res.contains(s))
-      }
-      // fastOpt with such a small program should be less than 2mb
-      assert(res.length < 2 * 1024 * 1024)
-    }
-    "fullOpt" - {
-      val res = compile("""
-      @JSExport
-      object Main{
-        def iAmDead() = "lolzz"
-        def iAmLive() = "wtfff"
+      "fullOpt" - {
+        val res = compile(
+          """
         @JSExport
-        def main() = {
-          Predef.println("Hello World")
-          iAmLive()
-          "omg"
+        object Main{
+          def iAmDead() = "lolzz"
+          def iAmLive() = "wtfff"
+          @JSExport
+          def main() = {
+            Predef.println("Hello World")
+            iAmLive()
+            "omg"
+          }
         }
+        """) |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export
+        for(s <- Seq("Main", "Hello World", "main")){
+          assert(res.contains(s))
+        }
+        for(s <- Seq("iAmDead", "lolzz", "iAmLive", "wtfff")){
+          assert(!res.contains(s))
+        }
+        // fullOpt with such a small program should be less than 200kb
+        assert(res.length < 200 *
+          1024)
       }
-      """) |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export
-      for(s <- Seq("Main", "Hello World", "main")){
-        assert(res.contains(s))
+      "crasher" - {
+        compile(
+          """
+            |@JSExport
+            |object ScalaJSExample{
+            |  @JSExport
+            |  def main(): Unit = {
+            |    val xs = Seq(1, 2, 3)
+            |    val ys = Seq(1, 2, 3)
+            |    val zs = for{
+            |      x <- xs
+            |      y <- ys
+            |    } yield x + y
+            |    println(zs.toString)
+            |  }
+            |}
+          """.stripMargin) |> Compiler.fastOpt
       }
-      for(s <- Seq("iAmDead", "lolzz", "iAmLive", "wtfff")){
-        assert(!res.contains(s))
-      }
-      // fullOpt with such a small program should be less than 200kb
-      assert(res.length < 200 * 1024)
     }
+
     "complete" - {
       def complete(src: String, mode: String, index: Int): List[(String, String)] = {
         Await.result(Compiler.autocomplete(src, mode, index), 60 seconds)
@@ -128,7 +155,7 @@ object Main extends TestSuite{
       }
       "positional" - {
         def check(snippet: String, key: String)(end: Int)(token: String, lul: Boolean, main: Boolean) = {
-          val newEnd = Option(token).fold(snippet.length-1)(snippet.indexOf(_, end))
+          val newEnd = Option(token).fold(snippet.length - 1)(snippet.indexOf(_, end))
           println(end + " -> " + newEnd)
           for (i <- end until newEnd) {
             val e = complete(snippet, key, i)
@@ -141,7 +168,9 @@ object Main extends TestSuite{
         }
         "scopes" - {
 
-          val snippet = """
+          val snippet =
+
+            """
 
             object Lul{
               def lol = "omg"
@@ -161,11 +190,15 @@ object Main extends TestSuite{
             ("object", true, false),
             ("{", false, false),
             (null, false, true)
-          ).foldLeft(0)(c(_).tupled(_))
+          ).foldLeft(0)(c(_).tupled(
+
+            _))
 
         }
         "members" - {
-          val snippet = """
+          val snippet =
+
+            """
 
             object Lul{
               def lol = "omg"
@@ -188,9 +221,11 @@ object Main extends TestSuite{
             ("def", false, true),
             ("\n", false, false),
             (null, false, true)
-          ).foldLeft(0)(c(_).tupled(_))
+          ).foldLeft(0)(c(_).tupled(
+            _))
         }
       }
     }
   }
 }
+

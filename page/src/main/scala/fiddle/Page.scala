@@ -44,13 +44,13 @@ object Page{
   
   def page = this
 
-  var logged = div()
   def logln(s: Node*): Unit = {
     log(div(s:_*))
   }
 
   def log(s: Node*): Unit = {
     s.foreach(_.applyTo(logspam))
+    logspam.scrollTop = 1000000000
   }
 
   val compiled = Util.getElem[dom.HTMLDivElement]("compiled").textContent
@@ -76,7 +76,6 @@ object Page{
         "compiled" -> compiled
       )
     }
-
   }
 
   /**

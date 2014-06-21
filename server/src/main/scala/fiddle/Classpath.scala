@@ -22,6 +22,7 @@ object Classpath {
    * want to do something.
    */
   lazy val loadedFiles = {
+    println("Loading files...")
     val jarFiles = for {
       name <- Seq(
         "/scala-library-2.10.4.jar",
@@ -49,14 +50,14 @@ object Classpath {
     } yield {
       path.split("/").last -> vfile.toByteArray()
     }
-
+    println("Files loaded...")
     jarFiles ++ bootFiles
   }
   /**
    * The loaded files shaped for Scalac to use
    */
   lazy val scalac = for((name, bytes) <- loadedFiles) yield {
-    println(s"Loading $name")
+    println(s"Loading $name for ScalaC")
     val in = new ZipInputStream(new ByteArrayInputStream(bytes))
     val entries = Iterator
       .continually(in.getNextEntry)
@@ -116,7 +117,9 @@ object Classpath {
       def isJARFile(f: File): Boolean = true
     }
 
-    loadedFiles.map{x => println(x._1); builder.build(x)}
-               .reduce(_ merge _)
+    val res = loadedFiles.map(x => builder.build(x))
+                         .reduce(_ merge _)
+    println("Loaded scalaJSClassPath")
+    res
   }
 }

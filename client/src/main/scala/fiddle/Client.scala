@@ -9,7 +9,7 @@ import scala.async.Async.{async, await}
 import scalatags.JsDom.all._
 import scalatags.JsDom._
 import scala.scalajs.js.annotation.JSExport
-import org.scalajs.dom.extensions.Ajax
+import org.scalajs.dom.extensions.{AjaxException, Ajax}
 import Page.fiddleUrl
 import JsVal.jsVal2jsAny
 import Client.RedLogger
@@ -82,6 +82,7 @@ class Client(){
 
     while(true){
       val (code, cmd) = await(command())
+
       val compiled = await(compile(code, cmd))
       compiled.foreach(exec)
     }
@@ -100,19 +101,24 @@ class Client(){
   logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-Space"), " for autocomplete.")
   logln("- Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
 
-  def compile(code: String, endpoint: String): Future[Option[String]] = async {
-    if (code == "") None
+  def compile(code: String, endpoint: String): Future[Option[String]] = {
+    if (code == "") Future(None)
     else {
       log(s"Compiling with $endpoint... ")
-      val res = await(Ajax.post(endpoint, code))
-      val result = JsVal.parse(res.responseText)
-      if (result("logspam").asString != ""){
-        logln(result("logspam").asString)
+      Ajax.post(endpoint, code).map { res =>
+        val result = JsVal.parse(res.responseText)
+        if (result("logspam").asString != "") {
+          logln(result("logspam").asString)
+        }
+        if (result("success").asBoolean) log(green("Success"))
+        else log(red("Failure"))
+        logln()
+        result.get("code").map(_.asString)
+      }.recover{case e: Exception =>
+        logln(red(e.toString))
+        None
       }
-      if(result("success").asBoolean) log(green("Success"))
-      else log(red("Failure"))
-      logln()
-      result.get("code").map(_.asString)
+
     }
   }
 
