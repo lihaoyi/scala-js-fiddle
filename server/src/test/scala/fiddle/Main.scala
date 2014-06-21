@@ -162,18 +162,20 @@ object Main extends TestSuite{
 
             object Lul{
               def lol = "omg"
-              this.
+              Main. ;
             }
             object Main{
               def zzzzx = 123;
             }
 
           """.replaceAll("\n *", "\n")
+
           val c = check(snippet, "member") _
           Seq(
             ("{", false, false),
             ("def", true, false),
-            ("this", false, false),
+            ("Main", false, false),
+            (";", false, true),
             ("object", true, false),
             ("{", false, false),
             ("def", false, true),
