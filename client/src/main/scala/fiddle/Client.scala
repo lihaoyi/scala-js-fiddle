@@ -106,12 +106,12 @@ class Client(){
     ("Compile", "Enter", () => command.update((editor.code, compileEndpoint))),
     ("FastOptimize", "Alt-Enter", () => command.update((editor.code, s"/fastOpt"))),
     ("FullOptimize", "Shift-Enter", () => command.update((editor.code, "/fullOpt"))),
-    ("Save", "S", save),
+    ("Save", "S", save _),
     ("Complete", "Space", () => editor.complete()),
     ("Javascript", "J", () => viewJavascript(s"/compile")),
     ("FastOptimizeJavascript", "Alt-J", () => viewJavascript(s"/fastOpt")),
     ("FullOptimizedJavascript", "Shift-J", () => viewJavascript(s"/fullOpt")),
-    ("Export", "E", export)
+    ("Export", "E", export _)
   ), complete, RedLogger)
 
   logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-Space"), " for autocomplete.")

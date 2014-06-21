@@ -41,14 +41,50 @@ object Compiler{
     val r = new Response[T]
     Future { func(r) ; r.get.left.get }
   }
-
+  trait MagicGlobal { g: scala.tools.nsc.Global =>
+    def ctx: JavaContext
+    def dirs: Vector[DirectoryClassPath]
+    override lazy val plugins = List[Plugin](new scala.scalajs.compiler.ScalaJSPlugin(this))
+    override lazy val platform: ThisPlatform = new JavaPlatform{
+      val global: g.type = g
+      override def classPath: ClassPath[BinaryRepr] = new JavaClassPath(dirs, ctx)
+    }
+    override lazy val analyzer = new {
+      val global: g.type = g
+    } with Analyzer{
+      override lazy val macroClassloader = new ClassLoader(this.getClass.getClassLoader){
+        val classCache = mutable.Map.empty[String, Option[Class[_]]]
+        override def findClass(name: String): Class[_] = {
+          val fileName = name.replace('.', '/') + ".class"
+          val res = classCache.getOrElseUpdate(
+            name,
+            Classpath.scalac
+              .map(_.lookupPath(fileName, false))
+              .find(_ != null).map{f =>
+              val data = f.toByteArray
+              this.defineClass(name, data, 0, data.length)
+            }
+          )
+          res match{
+            case None => throw new ClassNotFoundException()
+            case Some(cls) => cls
+          }
+        }
+      }
+    }
+  }
   def autocomplete(code: String, flag: String, pos: Int): Future[List[(String, String)]] = async {
+    val jCtx = new JavaContext()
+    val jDirs = Classpath.scalac.map(new DirectoryClassPath(_, jCtx)).toVector
     val vd = new io.VirtualDirectory("(memory)", None)
     // global can be reused, just create new runs for new compiler invocations
     val compiler = initGlobal(
-      (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter),
+      (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter) with MagicGlobal{
+        def ctx = jCtx
+        def dirs = jDirs
+      },
       vd,
-      s => ()
+      println
     )
 
     val file      = new BatchSourceFile(makeFile(prelude.getBytes ++ code.getBytes), prelude + code)
@@ -57,8 +93,8 @@ object Compiler{
     await(toFuture[Unit](compiler.askReload(List(file), _)))
 
     val maybeMems = await(toFuture[List[compiler.Member]](flag match{
-      case "scope" => compiler.askScopeCompletion(position, _)
-      case "member" => compiler.askTypeCompletion(position, _)
+      case "scope" => compiler.askScopeCompletion(position, _: compiler.Response[List[compiler.Member]])
+      case "member" => compiler.askTypeCompletion(position, _: compiler.Response[List[compiler.Member]])
     }))
 
     compiler.ask{() =>
@@ -68,7 +104,7 @@ object Compiler{
           s" (${x.sym.kindString})"
         ).find(_ != "").getOrElse("--Unknown--")
       }
-      maybeMems.map(x => sig(x) -> x.sym.decodedName)
+      maybeMems.map((x: compiler.Member) => sig(x) -> x.sym.decodedName)
                .filter(!blacklist.contains(_))
                .distinct
     }
@@ -106,41 +142,15 @@ object Compiler{
 
   def compile(src: Array[Byte], logger: String => Unit = _ => ()): Option[PartialIRClasspath] = {
 
-    val ctx = new JavaContext()
-    val dirs = Classpath.scalac.map(new DirectoryClassPath(_, ctx)).toVector
+    val jCtx = new JavaContext()
+    val jDirs = Classpath.scalac.map(new DirectoryClassPath(_, jCtx)).toVector
     val singleFile = makeFile(prelude.getBytes ++ src)
     val vd = new io.VirtualDirectory("(memory)", None)
 
     val compiler = initGlobal(
-      (settings, reporter) => new scala.tools.nsc.Global(settings, reporter){ g =>
-        override lazy val plugins = List[Plugin](new scala.scalajs.compiler.ScalaJSPlugin(this))
-        override lazy val platform: ThisPlatform = new JavaPlatform{
-          val global: g.type = g
-          override def classPath: ClassPath[BinaryRepr] = new JavaClassPath(dirs, ctx)
-        }
-        override lazy val analyzer = new {
-          val global: g.type = g
-        } with Analyzer{
-          override lazy val macroClassloader = new ClassLoader(this.getClass.getClassLoader){
-            val classCache = mutable.Map.empty[String, Option[Class[_]]]
-            override def findClass(name: String): Class[_] = {
-              val fileName = name.replace('.', '/') + ".class"
-              val res = classCache.getOrElseUpdate(
-                name,
-                Classpath.scalac
-                  .map(_.lookupPath(fileName, false))
-                  .find(_ != null).map{f =>
-                    val data = f.toByteArray
-                    this.defineClass(name, data, 0, data.length)
-                  }
-              )
-              res match{
-                case None => throw new ClassNotFoundException()
-                case Some(cls) => cls
-              }
-            }
-          }
-        }
+      (settings, reporter) => new scala.tools.nsc.Global(settings, reporter) with MagicGlobal{
+        def ctx = jCtx
+        def dirs = jDirs
       },
       vd,
       logger

@@ -1,10 +1,9 @@
 package fiddle
 
 import utest._
-import fiddle.Compiler.IgnoreLogger
-import org.mozilla.javascript.{Scriptable, Context}
-import scala.scalajs.tools.packager.ScalaJSPackager
-import scala.scalajs.tools.io.WritableMemVirtualJSFile
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 object Main extends TestSuite{
   def compile(s: String) = {
@@ -102,6 +101,56 @@ object Main extends TestSuite{
       }
       // fullOpt with such a small program should be less than 200kb
       assert(res.length < 200 * 1024)
+    }
+    "complete" - {
+      def complete(src: String, mode: String, index: Int): List[(String, String)] = {
+        Await.result(Compiler.autocomplete(src, mode, index), 60 seconds)
+      }
+      "basic" - {
+        val a = complete("object Main{ def zzzzx = 123}", "member", 12)
+        val b = complete("object Main{ def zzzzx = 123}", "member", 0)
+        val c = complete("object Main{ def zzzzx = 123}", "scope", 12)
+        val d = complete("object Main{ def zzzzx = 123}", "scope", 0)
+
+        assert(
+          a.contains((": Int", "zzzzx")),
+          !b.contains((": Int", "zzzzx")),
+          c.contains((": Int", "zzzzx")),
+          !d.contains((": Int", "zzzzx"))
+        )
+      }
+      "positional" - {
+        "scopes" - {
+
+          val snippet = """
+
+            object Lul{
+              def lol = "omg"
+            }
+            object Main{
+              def zzzzx = 123;
+            }
+
+          """.replaceAll("\n *", "\n")
+
+          def check(end: Int, token: String, lul: Boolean, main: Boolean) = {
+            val newEnd = snippet.indexOf(token, end)
+            for (i <- end until newEnd) {
+              val e = complete(snippet, "scope", i)
+              assert(
+                lul == e.contains((": String", "lol")),
+                main == e.contains((": Int", "zzzzx"))
+              )
+            }
+            newEnd
+          }
+          val end0 = 0
+          val end1 = check(end0, "{", false, false)
+          val end2 = check(end1, "object", true, false)
+          val end3 = check(end2, "{", false, false)
+          val end4 = check(end3, "grargh" /*This isn't found and goes to EOL*/, false, true)
+        }
+      }
     }
   }
 }
