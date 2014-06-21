@@ -92,7 +92,7 @@ object Build extends sbt.Build{
         "org.webjars" % "jquery" % "2.1.0-2",
         "org.webjars" % "normalize.css" % "2.1.3",
         "com.lihaoyi" %% "upickle" % "0.1.0",
-        "com.lihaoyi" %% "utest" % "0.1.3" % "test",
+        "com.lihaoyi" %% "utest" % "0.1.6" % "test",
         "org.mozilla" % "rhino" % "1.7R4" % "test"
       ),
 

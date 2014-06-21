@@ -4,10 +4,10 @@ import acyclic.file
 import scala.reflect.io.{VirtualDirectory, Streamable}
 import scala.io.Source
 import java.util.zip.ZipInputStream
-import java.io.{InputStream, Reader, ByteArrayInputStream}
+import java.io._
 
 import scala.scalajs.tools.classpath.builder.{AbstractJarLibClasspathBuilder, PartialClasspathBuilder, JarTraverser}
-import scala.scalajs.tools.io.{VirtualJSFile, VirtualScalaJSIRFile}
+import scala.scalajs.tools.io._
 import scala.collection.immutable.Traversable
 import scala.util.Random
 
@@ -17,8 +17,12 @@ import scala.util.Random
  * scala-compile and scalajs-tools
  */
 object Classpath {
+  /**
+   * In memory cache of all the jars used in the compiler. This takes up some
+   * memory but is better than reaching all over the filesystem every time we
+   * want to do something.
+   */
   lazy val loadedFiles = {
-
     val jarFiles = for {
       name <- Seq(
         "/scala-library-2.10.4.jar",
@@ -78,24 +82,37 @@ object Classpath {
 
   lazy val scalajs = {
     println("Loading scalaJSClassPath")
-    val builder = new AbstractJarLibClasspathBuilder{
+    def builder = new AbstractJarLibClasspathBuilder{
+      def listFiles(d: File): Traversable[File] = Nil
+      def toJSFile(f: File): VirtualJSFile = {
+        val file = new MemVirtualJSFile(f._1)
+        file.content = new String(f._2)
+        file
+      }
+
+      def toIRFile(f: File): VirtualScalaJSIRFile = {
+        val file = new MemVirtualSerializedScalaJSIRFile(f._1)
+        file.content = f._2
+        file
+      }
+      def isDirectory(f: File): Boolean = false
       type File = (String, Array[Byte])
       def toInputStream(f: File): InputStream = new ByteArrayInputStream(f._2)
       def isFile(f: File): Boolean = true
       def getName(f: File): String = f._1
-      def listFiles(d: File): Traversable[File] = ???
-      def isIRFile(f: File): Boolean = ???
-      def toJSFile(f: File): VirtualJSFile = ???
+
+      def isIRFile(f: File): Boolean = true
+
       def getVersion(f: File): String = Random.nextInt().toString
-      def isDirectory(f: File): Boolean = ???
-      def getAbsolutePath(f: File): String = ???
-      def isJSFile(f: File): Boolean = ???
-      def toReader(f: File): Reader = ???
-      def toIRFile(f: File): VirtualScalaJSIRFile = ???
+
+      def getAbsolutePath(f: File): String = f._1
+      def isJSFile(f: File): Boolean = false
+      def toReader(f: File): Reader = new InputStreamReader(new ByteArrayInputStream(f._2))
+
       def isJARFile(f: File): Boolean = true
     }
 
-    loadedFiles.map(builder.build)
+    loadedFiles.map{x => println(x._1); builder.build(x)}
                .reduce(_ merge _)
   }
 }

@@ -31,7 +31,7 @@ import scala.annotation.tailrec
 import scala.Some
 import scala.tools.nsc.typechecker.Analyzer
 import scala.scalajs.tools.classpath.builder.PartialClasspathBuilder
-import scala.scalajs.tools.classpath.{PartialIRClasspath, PartialClasspath}
+import scala.scalajs.tools.classpath.{CompleteNCClasspath, CompleteCIClasspath, PartialIRClasspath, PartialClasspath}
 import scala.scalajs.ir.Serializers
 import scala.Some
 
@@ -58,9 +58,7 @@ object Compiler{
     }
   }
 
-  val blacklist = Seq(
-    "<init>"
-  )
+  val blacklist = Seq("<init>")
 
   def toFuture[T](func: Response[T] => Unit): Future[T] = {
     val r = new Response[T]
@@ -111,7 +109,7 @@ object Compiler{
                     vd: io.VirtualDirectory,
                     logger: String => Unit) = {
     lazy val settings = new Settings
-    settings.usejavacp.value = true
+
     settings.outputDirs.setSingleOutput(vd)
     val writer = new Writer{
       var inner = ByteString()
@@ -128,6 +126,7 @@ object Compiler{
     make(settings, reporter)
 
   }
+
   def compile(src: Array[Byte], logger: String => Unit = _ => ()): Option[PartialIRClasspath] = {
 
     val ctx = new JavaContext()
@@ -194,19 +193,32 @@ object Compiler{
 
     }
   }
+  def export(p: PartialIRClasspath) = {
+    (new ScalaJSPackager).packageCP(
+      p,
+      ScalaJSPackager.OutputConfig(WritableMemVirtualJSFile("")),
+      Compiler.Logger
+    ).scalaJSCode.map(_.content).mkString
+  }
+  def export(p: CompleteCIClasspath) = {
+    p.allCode.map(_.content).mkString
+  }
+  def export(p: CompleteNCClasspath) = {
+    p.allCode.map(_.content).mkString
+  }
 
-  def deadCodeElimination(userFiles: PartialIRClasspath) = {
+  def fastOpt(userFiles: PartialIRClasspath) = {
     new ScalaJSOptimizer().optimizeCP(
       ScalaJSOptimizer.Inputs(Classpath.scalajs.merge(userFiles).resolve()),
-      ScalaJSOptimizer.OutputConfig(WritableMemVirtualJSFile("")),
+      ScalaJSOptimizer.OutputConfig(WritableMemVirtualJSFile("output.js")),
       Logger
     )
   }
 
-  def optimize(userFiles: PartialIRClasspath) = {
+  def fullOpt(userFiles: CompleteCIClasspath) = {
     new ScalaJSClosureOptimizer().optimizeCP(
-      ScalaJSClosureOptimizer.Inputs(deadCodeElimination(userFiles)),
-      ScalaJSClosureOptimizer.OutputConfig(WritableMemVirtualJSFile("")),
+      ScalaJSClosureOptimizer.Inputs(userFiles),
+      ScalaJSClosureOptimizer.OutputConfig(WritableMemVirtualJSFile("output.js")),
       Logger
     )
   }

@@ -68,9 +68,6 @@ class Client(){
     Checker.reset(1000)
     try{
       js.eval(s"""(function(ScalaJS){
-        $$checker = Checker()
-        $$c = function(){ $$checker.check() };
-
         $s;
         ScalaJSExample().main();
       })""").asInstanceOf[js.Function1[js.Any, js.Any]](storedScalaJS)
@@ -79,12 +76,12 @@ class Client(){
     }
   }
   val instrument = "c"
-  var compileEndpoint = s"/preoptimize/$instrument"
+  var compileEndpoint = s"/fastOpt"
   var extdeps = ""
 
   lazy val extdepsLoop = task*async{
-    extdeps = await(Ajax.post("/extdeps/" + instrument)).responseText
-    compileEndpoint = s"/compile/$instrument"
+    extdeps = await(Ajax.post("/fullOpt")).responseText
+    compileEndpoint = s"/compile"
   }
   var storedScalaJS: js.Any = ""
   val compilationLoop = task*async{
@@ -97,9 +94,6 @@ class Client(){
       if (extdeps != ""){
         Checker.reset(5000)
         storedScalaJS = js.eval(s"""(function(){
-          $$checker = Checker()
-          $$c = function(){ $$checker.check() };
-
           $extdeps
           return ScalaJS
         }).call(window)""")
@@ -112,13 +106,13 @@ class Client(){
 
   val editor: Editor = new Editor(Seq(
     ("Compile", "Enter", () => command.update((editor.code, compileEndpoint))),
-    ("PreOptimize", "Alt-Enter", () => command.update((editor.code, s"/preoptimize/$instrument"))),
-    ("Optimize", "Shift-Enter", () => command.update((editor.code, "/optimize"))),
+    ("FastOptimize", "Alt-Enter", () => command.update((editor.code, s"/fastOpt"))),
+    ("FullOptimize", "Shift-Enter", () => command.update((editor.code, "/fullOpt"))),
     ("Save", "S", save),
     ("Complete", "Space", () => editor.complete()),
-    ("Javascript", "J", () => viewJavascript(s"/compile/$instrument")),
-    ("PreOptimizedJavascript", "Alt-J", () => viewJavascript(s"/preoptimize/$instrument")),
-    ("OptimizedJavascript", "Shift-J", () => viewJavascript(s"/optimize")),
+    ("Javascript", "J", () => viewJavascript(s"/compile")),
+    ("FastOptimizeJavascript", "Alt-J", () => viewJavascript(s"/fastOpt")),
+    ("FullOptimizedJavascript", "Shift-J", () => viewJavascript(s"/fullOpt")),
     ("Export", "E", export)
   ), complete, RedLogger)
 

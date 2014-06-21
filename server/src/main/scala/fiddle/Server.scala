@@ -47,15 +47,14 @@ object Server extends SimpleRoutingApp {
       @JSExport
       object Main{
         @JSExport
-        def main() = ???
+        def main() = "omgggg"
       }
     """.getBytes)
-    val optimized = Compiler.optimize(res.get)
-                            .allCode
-                            .map(_.content)
-                            .mkString
+    val optimized = res.get |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export
+
     println("Power On Self Test complete: " + optimized.length + " bytes")
-    println(InetAddress.getLocalHost().getHostAddress)
+    assert(optimized.contains("omgggg"))
+
     startServer("0.0.0.0", port = 8080) {
       cache(simpleCache) {
         encodeResponse(Gzip) {
@@ -67,7 +66,8 @@ object Server extends SimpleRoutingApp {
                   Static.page(
                     s"Client().gistMain([])",
                     clientFiles,
-                    "Loading gist...")
+                    "Loading gist..."
+                  )
                 )
               }
             } ~
@@ -86,11 +86,11 @@ object Server extends SimpleRoutingApp {
             getFromResourceDirectory("")
           } ~
           post {
-            path("optimize" ~ (Slash ~ Segment).?){ s =>
-              compileStuff(_, Compiler.optimize(_).allCode.map(_.content).mkString)
+            path("fullOpt"){
+              compileStuff(_, _ |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export)
             } ~
-            path("preoptimize" ~ (Slash ~ Segment).?){ s =>
-              compileStuff(_, Compiler.deadCodeElimination(_).allCode.map(_.content).mkString)
+            path("fastOpt"){
+              compileStuff(_, _ |> Compiler.fastOpt |> Compiler.export)
             } ~
             path("export"){
               formFields("compiled", "source"){
