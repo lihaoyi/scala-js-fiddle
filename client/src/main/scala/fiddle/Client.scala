@@ -14,6 +14,7 @@ import Page.fiddleUrl
 import JsVal.jsVal2jsAny
 import Client.RedLogger
 import scala.Some
+import scala.util.{Failure, Success}
 
 @JSExport
 object Checker{
@@ -66,6 +67,7 @@ class Client(){
     Checker.reset(1000)
     try{
       js.eval(s"""(function(ScalaJS){
+        console.log("THIS", this)
         $s;
         ScalaJSExample().main();
       })""").asInstanceOf[js.Function1[js.Any, js.Any]](storedScalaJS)
@@ -75,12 +77,7 @@ class Client(){
   }
   val instrument = "c"
   var compileEndpoint = s"/fastOpt"
-  var extdeps = ""
 
-  lazy val extdepsLoop = task*async{
-    extdeps = await(Ajax.post("/fullOpt")).responseText
-    compileEndpoint = s"/compile"
-  }
   var storedScalaJS: js.Any = ""
   val compilationLoop = task*async{
     val (code, cmd) = await(command())
@@ -89,27 +86,16 @@ class Client(){
     while(true){
       val (code, cmd) = await(command())
       val compiled = await(compile(code, cmd))
-      if (extdeps != ""){
-        Checker.reset(5000)
-        storedScalaJS = js.eval(s"""(function(){
-          $extdeps
-          return ScalaJS
-        }).call(window)""")
-        extdeps = ""
-      }
       compiled.foreach(exec)
-      extdepsLoop
     }
   }
 
   val editor: Editor = new Editor(Seq(
     ("Compile", "Enter", () => command.update((editor.code, compileEndpoint))),
-    ("FastOptimize", "Alt-Enter", () => command.update((editor.code, s"/fastOpt"))),
     ("FullOptimize", "Shift-Enter", () => command.update((editor.code, "/fullOpt"))),
     ("Save", "S", save _),
     ("Complete", "Space", () => editor.complete()),
-    ("Javascript", "J", () => viewJavascript(s"/compile")),
-    ("FastOptimizeJavascript", "Alt-J", () => viewJavascript(s"/fastOpt")),
+    ("FastOptimizeJavascript", "J", () => viewJavascript(s"/compile")),
     ("FullOptimizedJavascript", "Shift-J", () => viewJavascript(s"/fullOpt")),
     ("Export", "E", export _)
   ), complete, RedLogger)
@@ -165,7 +151,7 @@ class Client(){
 
   def export(): Unit = task*async {
     logln("Exporting...")
-    await(compile(editor.code, "/optimize")).foreach{ code =>
+    await(compile(editor.code, "/fullOpt")).foreach{ code =>
       Util.Form.post("/export",
         "source" -> editor.code,
         "compiled" -> code
@@ -174,7 +160,7 @@ class Client(){
   }
 
   def save(): Unit = task*async{
-    await(compile(editor.code, "/optimize"))
+    await(compile(editor.code, "/fullOpt"))
     val data = JsVal.obj(
       "description" -> "Scala.jsFiddle gist",
       "public" -> true,
@@ -230,10 +216,11 @@ object Client{
       case Seq(g) => (g, None)
       case Seq(g, f) => (g, Some(f))
     }
+
     val src = await(load(gistId, fileName))
     val client = new Client()
     client.editor.sess.setValue(src)
-    client.command.update((src, "/optimize"))
+    client.command.update((src, "/fastOpt"))
   }
 
   @JSExport
@@ -244,23 +231,34 @@ object Client{
     js.eval(Page.compiled)
   }
 
-  def load(gistId: String, file: Option[String]): Future[String] = async {
+  def load(gistId: String, file: Option[String]): Future[String] = {
     val gistUrl = "https://gist.github.com/" + gistId
     logln(
       "Loading ",
       file.fold(span)(s => span(
-        a(href:=gistUrl + "#file-" + s.toLowerCase.replace('.', '-'))(s),
+        a(href := gistUrl + "#file-" + s.toLowerCase.replace('.', '-'))(s),
         " from "
       )),
-      a(href:=gistUrl)(gistUrl),
+      a(href := gistUrl)(gistUrl),
       "..."
     )
+    Ajax.get("https://api.github.com/gists/" + gistId).map{ res =>
 
-    val res = await(Ajax.get("https://api.github.com/gists/" + gistId))
-    val result = JsVal.parse(res.responseText)
-    val mainFile = result("files").get(file.getOrElse(""))
-    val firstFile = result("files").values(0)
-    mainFile.getOrElse(firstFile)("content").asString
+      val result = JsVal.parse(res.responseText)
+      val mainFile = result("files").get(file.getOrElse(""))
+      val firstFile = result("files").values(0)
+      mainFile.getOrElse(firstFile)("content").asString
+    }.recover{case e =>
+      """
+        |import scalajs.js
+        |object ScalaJSExample extends js.JSApp{
+        |  def main(): Unit = {
+        |    println("Looks like there was an error loading the default Gist!")
+        |    println("Loading an empty application so you can get started")
+        |  }
+        |}
+      """.stripMargin}
+
   }
   def scheduleResets() = {
     dom.setInterval(() => Checker.reset(1000), 100)

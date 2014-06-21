@@ -5,6 +5,13 @@ import utest._
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
+/**
+ * Internal API tests to make sure I'm using the Scala compiler and
+ * ScalaJS tools correctly, since they're completely separate from the
+ * web server. They're also complicated enough to be easy to screw up,
+ * and it's easier to fix them from the command line without all the
+ * HTTP server rubbish getting in the way.
+ */
 object Main extends TestSuite{
   def compile(s: String) = {
     Compiler.compile(s.getBytes, println).get

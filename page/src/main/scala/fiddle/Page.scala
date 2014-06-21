@@ -28,24 +28,13 @@ object Page{
   def source = Util.getElem[dom.HTMLDivElement]("source")
 
   @JSExport
-  def println(ss: String*) = {
-    renderln(div(ss).toString)
+  def println(ss: Node*) = {
+    print(div(ss: _*))
   }
 
   @JSExport
-  def print(ss: String*) = {
-    for (s <- ss) output.appendChild(dom.document.createTextNode(s))
-    output.scrollTop = output.scrollHeight - output.clientHeight
-  }
-
-  @JSExport
-  def renderln(ss: String*) = {
-    render(div(ss.map(raw)).toString)
-  }
-
-  @JSExport
-  def render(ss: String*) = {
-    for (s <- ss) output.appendChild(Util.createDom(s))
+  def print(ss: Node*) = {
+    ss.foreach(_.applyTo(output))
     output.scrollTop = output.scrollHeight - output.clientHeight
   }
 
@@ -93,9 +82,14 @@ object Page{
         "compiled" -> compiled
       )
     }
+
     js.eval(compiled)
   }
 
+  /**
+   * Uses the Ace editor to generate a syntax-highlighted
+   * HTML from the given blob of code.
+   */
   def highlight(source: String, m: String): String = {
     val highlighter = js.Dynamic.global.require("ace/ext/static_highlight")
     val mode = js.Dynamic.global.require(m).Mode

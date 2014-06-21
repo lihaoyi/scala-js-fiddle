@@ -17,9 +17,15 @@ object Build extends sbt.Build{
         (SbtStartScript.stage in Compile).value
         (assembly in (server, Compile)).value
       },
-      (resources in (server, Compile)) ++= Seq(
-        (packageBin in (runtime, Compile)).value
-      ) ++ (managedClasspath in (runtime, Compile)).value.map(_.data),
+      (resources in (server, Compile)) ++= {
+        (fullOptJS in (client, Compile)).value
+        val a: Seq[File] = Seq(
+          (packageBin in (runtime, Compile)).value,
+          (artifactPath in (client, Compile, fullOptJS)).value
+        )
+        val b: Seq[File] = (managedClasspath in (runtime, Compile)).value.map(_.data)
+        a ++ b
+      },
       scalaVersion := "2.10.3"
     )
   lazy val client = project
@@ -48,6 +54,7 @@ object Build extends sbt.Build{
       )
     )
   lazy val runtime = project
+    .dependsOn(page)
     .settings(scalaJSSettings:_*)
     .settings(
       resolvers += Resolver.sonatypeRepo("snapshots"),

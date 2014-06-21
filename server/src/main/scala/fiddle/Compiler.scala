@@ -12,7 +12,7 @@ import scala.async.Async.{async, await}
 import concurrent.ExecutionContext.Implicits.global
 import scala.reflect.internal.util.{BatchSourceFile, OffsetPosition}
 import scala.tools.nsc.interactive.Response
-
+import scala.tools.nsc
 import scala.scalajs.tools.packager.ScalaJSPackager
 import scala.io.Source
 import scala.scalajs.tools.optimizer.{ScalaJSClosureOptimizer, ScalaJSOptimizer}
@@ -25,7 +25,6 @@ import scala.collection.mutable
 import scala.tools.nsc.typechecker.Analyzer
 import scala.scalajs.tools.classpath.{CompleteNCClasspath, CompleteCIClasspath, PartialIRClasspath, PartialClasspath}
 import scala.Some
-import akka.actor.Actor.Receive
 
 /**
  * Handles the interaction between scala-js-fiddle and
@@ -80,7 +79,7 @@ object Compiler{
     val vd = new io.VirtualDirectory("(memory)", None)
     // global can be reused, just create new runs for new compiler invocations
     val compiler = initGlobal(
-      (settings, reporter) => new scala.tools.nsc.interactive.Global(settings, reporter) with MagicGlobal{
+      (settings, reporter) => new nsc.interactive.Global(settings, reporter) with MagicGlobal{
         def ctx = jCtx
         def dirs = jDirs
       },
@@ -151,7 +150,7 @@ object Compiler{
     val vd = new io.VirtualDirectory("(memory)", None)
 
     val compiler = initGlobal(
-      (settings, reporter) => new scala.tools.nsc.Global(settings, reporter) with MagicGlobal{
+      (settings, reporter) => new nsc.Global(settings, reporter) with MagicGlobal{
         def ctx = jCtx
         def dirs = jDirs
       },

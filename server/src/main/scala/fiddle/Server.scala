@@ -71,11 +71,14 @@ object Server extends SimpleRoutingApp {
             getFromResourceDirectory("")
           } ~
           post {
-            path("fullOpt"){
-              compileStuff(_, _ |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export)
+            path("compile"){
+              compileStuff(_, _ |> Compiler.export)
             } ~
             path("fastOpt"){
               compileStuff(_, _ |> Compiler.fastOpt |> Compiler.export)
+            } ~
+            path("fullOpt"){
+              compileStuff(_, _ |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export)
             } ~
             path("export"){
               formFields("compiled", "source"){
