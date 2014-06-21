@@ -25,6 +25,7 @@ import scala.collection.mutable
 import scala.tools.nsc.typechecker.Analyzer
 import scala.scalajs.tools.classpath.{CompleteNCClasspath, CompleteCIClasspath, PartialIRClasspath, PartialClasspath}
 import scala.Some
+import akka.actor.Actor.Receive
 
 /**
  * Handles the interaction between scala-js-fiddle and
@@ -84,7 +85,7 @@ object Compiler{
         def dirs = jDirs
       },
       vd,
-      println
+      _ => ()
     )
 
     val file      = new BatchSourceFile(makeFile(prelude.getBytes ++ code.getBytes), prelude + code)
@@ -97,7 +98,7 @@ object Compiler{
       case "member" => compiler.askTypeCompletion(position, _: compiler.Response[List[compiler.Member]])
     }))
 
-    compiler.ask{() =>
+    val res = compiler.ask{() =>
       def sig(x: compiler.Member) = {
         Seq(
           x.sym.signatureString,
@@ -108,6 +109,8 @@ object Compiler{
                .filter(!blacklist.contains(_))
                .distinct
     }
+    compiler.askShutdown()
+    res
   }
 
   def makeFile(src: Array[Byte]) = {

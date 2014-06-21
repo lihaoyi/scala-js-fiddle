@@ -120,6 +120,18 @@ object Main extends TestSuite{
         )
       }
       "positional" - {
+        def check(snippet: String, key: String)(end: Int)(token: String, lul: Boolean, main: Boolean) = {
+          val newEnd = Option(token).fold(snippet.length-1)(snippet.indexOf(_, end))
+          println(end + " -> " + newEnd)
+          for (i <- end until newEnd) {
+            val e = complete(snippet, key, i)
+            assert(
+              lul == e.contains((": String", "lol")),
+              main == e.contains((": Int", "zzzzx"))
+            )
+          }
+          newEnd
+        }
         "scopes" - {
 
           val snippet = """
@@ -133,22 +145,41 @@ object Main extends TestSuite{
 
           """.replaceAll("\n *", "\n")
 
-          def check(end: Int, token: String, lul: Boolean, main: Boolean) = {
-            val newEnd = snippet.indexOf(token, end)
-            for (i <- end until newEnd) {
-              val e = complete(snippet, "scope", i)
-              assert(
-                lul == e.contains((": String", "lol")),
-                main == e.contains((": Int", "zzzzx"))
-              )
+
+          val c = check(snippet, "scope") _
+          // There are things in scope after every open curly, but they
+          // stop being in scope when the `object` keyword appears
+          Seq(
+            ("{", false, false),
+            ("object", true, false),
+            ("{", false, false),
+            (null, false, true)
+          ).foldLeft(0)(c(_).tupled(_))
+
+        }
+        "members" - {
+          val snippet = """
+
+            object Lul{
+              def lol = "omg"
+              this.
             }
-            newEnd
-          }
-          val end0 = 0
-          val end1 = check(end0, "{", false, false)
-          val end2 = check(end1, "object", true, false)
-          val end3 = check(end2, "{", false, false)
-          val end4 = check(end3, "grargh" /*This isn't found and goes to EOL*/, false, true)
+            object Main{
+              def zzzzx = 123;
+            }
+
+          """.replaceAll("\n *", "\n")
+          val c = check(snippet, "member") _
+          Seq(
+            ("{", false, false),
+            ("def", true, false),
+            ("this", false, false),
+            ("object", true, false),
+            ("{", false, false),
+            ("def", false, true),
+            ("\n", false, false),
+            (null, false, true)
+          ).foldLeft(0)(c(_).tupled(_))
         }
       }
     }
