@@ -62,10 +62,11 @@ object Page{
     val editor = Util.getElem[dom.HTMLDivElement]("editor")
     js.Dynamic.global.require("ace")
     editor.innerHTML = highlight(source.textContent, "ace/mode/scala")
-
-    logln("- Code snippet exported from ", a(href:=fiddleUrl, fiddleUrl))
-    logln("- ", blue("Ctrl/Cmd-S"), " and select ", blue("Web Page, Complete"), " to save for offline use")
-    logln("- Click ", a(id:="editLink", href:="javascript:", "here"), " to edit a copy online")
+    if(logspam.textContent == "") {
+      logln("- Code snippet exported from ", a(href := fiddleUrl, fiddleUrl))
+      logln("- ", blue("Ctrl/Cmd-S"), " and select ", blue("Web Page, Complete"), " to save for offline use")
+      logln("- Click ", a(id := "editLink", href := "javascript:", "here"), " to edit a copy online")
+    }
     dom.document
        .getElementById("editLink")
        .asInstanceOf[dom.HTMLAnchorElement]

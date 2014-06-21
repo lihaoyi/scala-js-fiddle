@@ -8,8 +8,7 @@ object Static{
     "/META-INF/resources/webjars/ace/07.31.2013/src-min/ext-language_tools.js",
     "/META-INF/resources/webjars/ace/07.31.2013/src-min/ext-static_highlight.js",
     "/META-INF/resources/webjars/ace/07.31.2013/src-min/mode-scala.js",
-    "/META-INF/resources/webjars/ace/07.31.2013/src-min/theme-twilight.js",
-    "/META-INF/resources/webjars/jquery/2.1.0/jquery.js"
+    "/META-INF/resources/webjars/ace/07.31.2013/src-min/theme-twilight.js"
   )
 
   def page(arg: String, srcFiles: Seq[String], source: String = "", compiled: String = "", analytics: Boolean = true) =
