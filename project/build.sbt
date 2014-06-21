@@ -8,7 +8,7 @@ resolvers += Resolver.url("scala-js-snapshots",
 
 resolvers += "typesafe" at "http://repo.typesafe.com/typesafe/releases/"
 
-addSbtPlugin("org.scala-lang.modules.scalajs" % "scalajs-sbt-plugin" % "0.4.3")
+addSbtPlugin("org.scala-lang.modules.scalajs" % "scalajs-sbt-plugin" % "0.5.0")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.10.0")
 
@@ -16,4 +16,3 @@ addSbtPlugin("io.spray" % "sbt-revolver" % "0.7.1")
 
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.11.2")
 
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.4")

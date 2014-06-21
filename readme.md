@@ -4,7 +4,7 @@ Scala-Js-Fiddle
 Source code for [www.scala-js-fiddle.com](http://www.scala-js-fiddle.com). To develop, run:
 
 ```
-sbt "~; server/re-start;"
+sbt "~; server/re-start"
 ```
 
 You can also run

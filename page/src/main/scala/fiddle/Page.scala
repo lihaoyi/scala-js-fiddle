@@ -3,8 +3,8 @@ package fiddle
 import scala.scalajs.js
 import js.annotation.JSExport
 import org.scalajs.dom
-import scalatags._
-import scalatags.all._
+import scalatags.JsDom.all._
+import scalatags.JsDom._
 import scala.scalajs.js.Dynamic._
 
 /**
@@ -63,14 +63,12 @@ object Page{
   def page = this
 
   var logged = div()
-  def logln(s: Modifier*): Unit = {
+  def logln(s: Node*): Unit = {
     log(div(s:_*))
   }
 
-  def log(s: Modifier*): Unit = {
-    logged = s.foldLeft(logged)((a, b) => b.transform(a))
-    logspam.innerHTML = logged.toString()
-    logspam.scrollTop = logspam.scrollHeight - logspam.clientHeight
+  def log(s: Node*): Unit = {
+    s.foreach(_.applyTo(logspam))
   }
 
   val compiled = Util.getElem[dom.HTMLDivElement]("compiled").textContent

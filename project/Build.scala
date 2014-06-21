@@ -11,7 +11,6 @@ object Build extends sbt.Build{
   lazy val root = project.in(file("."))
     .aggregate(client, page, server, runtime)
     .settings(assemblySettings:_*)
-    .settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
     .settings(
       SbtStartScript.stage in Compile := Unit,
       (assembly in Compile) := {
@@ -19,9 +18,7 @@ object Build extends sbt.Build{
         (assembly in (server, Compile)).value
       },
       (resources in (server, Compile)) ++= Seq(
-        (optimizeJS in (client, Compile)).value,
-        (packageBin in (runtime, Compile)).value,
-        (optimizeJS in (runtime, Compile)).value
+        (packageBin in (runtime, Compile)).value
       ) ++ (managedClasspath in (runtime, Compile)).value.map(_.data),
       scalaVersion := "2.10.3"
     )
@@ -30,15 +27,14 @@ object Build extends sbt.Build{
     .settings(scalaJSSettings:_*)
     .settings(
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.3",
-        "com.scalatags" %% "scalatags" % "0.2.4-JS",
-        "com.scalarx" %% "scalarx" % "0.2.3-JS",
-        "com.lihaoyi" %% "upickle" % "0.1.0-JS",
-        "org.scala-lang.modules.scalajs" %% "scalajs-jquery" % "0.3",
+        "org.scala-lang.modules.scalajs" %%% "scalajs-dom" % "0.6",
+        "com.scalatags" %%% "scalatags" % "0.3.0",
+        "com.scalarx" %%% "scalarx" % "0.2.5",
+        "com.lihaoyi" %%% "upickle" % "0.1.2",
         "org.scala-lang.modules" %% "scala-async" % "0.9.0" % "provided",
         "com.lihaoyi" %% "acyclic" % "0.1.1" % "provided"
       ),
-      (SbtStartScript.stage in Compile) := (optimizeJS in Compile).value,
+      (SbtStartScript.stage in Compile) := (fullOptJS in Compile).value,
       relativeSourceMaps := true,
       addCompilerPlugin("com.lihaoyi" %% "acyclic" % "0.1.1"),
       autoCompilerPlugins := true
@@ -47,8 +43,8 @@ object Build extends sbt.Build{
     .settings(scalaJSSettings:_*)
     .settings(
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.3",
-        "com.scalatags" % "scalatags_2.10" % "0.2.4-JS"
+        "org.scala-lang.modules.scalajs" %%% "scalajs-dom" % "0.6",
+        "com.scalatags" %%% "scalatags" % "0.3.0"
       )
     )
   lazy val runtime = project
@@ -58,10 +54,10 @@ object Build extends sbt.Build{
       libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-reflect" % "2.10.3",
         "org.scalamacros" % "quasiquotes_2.10.3" % "2.0.0-M3",
-        "org.scala-lang.modules.scalajs" %% "scalajs-dom" % "0.3",
-        "com.scalatags" % "scalatags_2.10" % "0.2.4-JS",
+        "org.scala-lang.modules.scalajs" %%% "scalajs-dom" % "0.6",
+        "com.scalatags" %%% "scalatags" % "0.3.0",
         "org.scala-lang.modules" %% "scala-async" % "0.9.0" % "provided",
-        "com.scalarx" %% "scalarx" % "0.2.3-JS",
+        "com.scalarx" %%% "scalarx" % "0.2.5",
         "com.nativelibs4java" %% "scalaxy-loops" % "0.3-SNAPSHOT"
       ),
       addCompilerPlugin("org.scalamacros" % "paradise_2.10.3" % "2.0.0-M3"),
@@ -69,7 +65,6 @@ object Build extends sbt.Build{
     )
 
   lazy val server = project
-    .settings(net.virtualvoid.sbt.graph.Plugin.graphSettings: _*)
     .settings(assemblySettings ++ Revolver.settings ++ SbtStartScript.startScriptForClassesSettings:_*)
     .settings(
       resolvers += Resolver.url("scala-js-releases",
@@ -88,8 +83,8 @@ object Build extends sbt.Build{
         "io.spray" % "spray-caching" % "1.3.1",
         "io.spray" % "spray-httpx" % "1.3.1",
         "io.spray" % "spray-routing" % "1.3.1",
-        "org.scala-lang.modules.scalajs" %% "scalajs-compiler" % "0.4.2",
-        "org.scala-lang.modules.scalajs" %% "scalajs-tools" % "0.4.2",
+        "org.scala-lang.modules.scalajs" % "scalajs-compiler_2.10.4" % "0.5.0",
+        "org.scala-lang.modules.scalajs" %% "scalajs-tools" % "0.5.0",
         "org.scala-lang.modules" %% "scala-async" % "0.9.0" % "provided",
         "com.scalatags" %% "scalatags" % "0.2.4",
         "com.lihaoyi" %% "acyclic" % "0.1.1" % "provided",

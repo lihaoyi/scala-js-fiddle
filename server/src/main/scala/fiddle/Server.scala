@@ -29,6 +29,7 @@ import spray.http.HttpResponse
 import spray.http.CacheDirectives.`max-age`
 import spray.routing._
 import upickle._
+import scala.scalajs.tools.classpath.PartialIRClasspath
 
 object Server extends SimpleRoutingApp {
   implicit val system = ActorSystem()
@@ -49,7 +50,10 @@ object Server extends SimpleRoutingApp {
         def main() = ???
       }
     """.getBytes)
-    val optimized = Compiler.optimize(res.toSeq.flatten.map(f => f.name -> f.toCharArray.mkString), "")
+    val optimized = Compiler.optimize(res.get)
+                            .allCode
+                            .map(_.content)
+                            .mkString
     println("Power On Self Test complete: " + optimized.length + " bytes")
     println(InetAddress.getLocalHost().getHostAddress)
     startServer("0.0.0.0", port = 8080) {
@@ -82,19 +86,11 @@ object Server extends SimpleRoutingApp {
             getFromResourceDirectory("")
           } ~
           post {
-            path("compile" ~ (Slash ~ Segment).?){ s =>
-              compileStuff(_, Compiler.packageUserFiles(_, s.getOrElse("")))
-            } ~
             path("optimize" ~ (Slash ~ Segment).?){ s =>
-              compileStuff(_, Compiler.optimize(_, s.getOrElse("")))
+              compileStuff(_, Compiler.optimize(_).allCode.map(_.content).mkString)
             } ~
             path("preoptimize" ~ (Slash ~ Segment).?){ s =>
-              compileStuff(_, Compiler.deadCodeElimination(_, s.getOrElse("")))
-            } ~
-            path("extdeps" ~ (Slash ~ Segment).?){ s =>
-              complete{
-                Compiler.packageJS(Classpath.scalajs, s.getOrElse(""))
-              }
+              compileStuff(_, Compiler.deadCodeElimination(_).allCode.map(_.content).mkString)
             } ~
             path("export"){
               formFields("compiled", "source"){
@@ -138,7 +134,7 @@ object Server extends SimpleRoutingApp {
     }
   }
 
-  def compileStuff(ctx: RequestContext, processor: Seq[(String, String)] => String): Unit = {
+  def compileStuff(ctx: RequestContext, processor: PartialIRClasspath => String): Unit = {
 
     val output = mutable.Buffer.empty[String]
 
@@ -155,9 +151,7 @@ object Server extends SimpleRoutingApp {
         )))
 
       case Some(files) =>
-        val code = processor(
-          files.map(f => f.name -> new String(f.toByteArray))
-        )
+        val code = processor(files)
 
         Json.write(Js.Object(Seq(
           "success" -> writeJs(true),

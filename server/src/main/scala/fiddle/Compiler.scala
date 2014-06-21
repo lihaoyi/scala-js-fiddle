@@ -17,9 +17,9 @@ import scala.tools.nsc.interactive.Response
 import scala.scalajs.tools.packager.ScalaJSPackager
 import scala.io.Source
 import scala.scalajs.tools.optimizer.{ScalaJSClosureOptimizer, ScalaJSOptimizer}
-import scala.scalajs.tools.io.{VirtualScalaJSClassfile, VirtualFile, VirtualJSFile}
+import scala.scalajs.tools.io._
 import scala.scalajs.tools.logging.Level
-import scala.scalajs.tools.classpath.ScalaJSClasspathEntries
+
 import scala.tools.nsc.backend.JavaPlatform
 import scala.tools.util.PathResolver
 import scala.reflect.io._
@@ -30,6 +30,10 @@ import java.util.zip.ZipInputStream
 import scala.annotation.tailrec
 import scala.Some
 import scala.tools.nsc.typechecker.Analyzer
+import scala.scalajs.tools.classpath.builder.PartialClasspathBuilder
+import scala.scalajs.tools.classpath.{PartialIRClasspath, PartialClasspath}
+import scala.scalajs.ir.Serializers
+import scala.Some
 
 /**
  * Handles the interaction between scala-js-fiddle and
@@ -52,20 +56,6 @@ object Compiler{
         )
       }
     }
-  }
-
-  def prep(virtualFiles: Seq[(String, String)]) = {
-    val jsFiles = virtualFiles.filter(_._1.endsWith(".js")).toMap
-    val jsInfoFiles = virtualFiles.filter(_._1.endsWith(".sjsinfo")).toMap
-    val jsKeys = jsFiles.keys.map(_.dropRight(".js".length)).toSet
-    val jsInfoKeys = jsInfoFiles.keys.map(_.dropRight(".sjsinfo".length)).toSet
-    val sharedKeys = jsKeys.intersect(jsInfoKeys)
-    val scalaJsFiles = for(key <- sharedKeys.toSeq) yield new VirtualScalaJSClassfile {
-      def name = key + ".js"
-      def content = jsFiles(key + ".js")
-      def info = jsInfoFiles(key + ".sjsinfo")
-    }
-    (jsFiles, jsInfoFiles, scalaJsFiles)
   }
 
   val blacklist = Seq(
@@ -138,7 +128,7 @@ object Compiler{
     make(settings, reporter)
 
   }
-  def compile(src: Array[Byte], logger: String => Unit = _ => ()): Option[Seq[io.AbstractFile]] = {
+  def compile(src: Array[Byte], logger: String => Unit = _ => ()): Option[PartialIRClasspath] = {
 
     val ctx = new JavaContext()
     val dirs = Classpath.scalac.map(new DirectoryClassPath(_, ctx)).toVector
@@ -184,69 +174,41 @@ object Compiler{
     run.compileFiles(List(singleFile))
 
     if (vd.iterator.isEmpty) None
-    else Some(vd.iterator.toSeq)
-  }
-
-  def packageJS(cp: ScalaJSClasspathEntries, instrument: String) = {
-    val packager = new ScalaJSPackager
-    val stringer = new StringWriter()
-    val printer = new PrintWriter(stringer)
-
-    packager.packageScalaJS(
-      ScalaJSPackager.Inputs(cp),
-      ScalaJSPackager.OutputConfig("extdeps.js", printer, None),
-      IgnoreLogger
-    )
-    Nontermination.instrument(stringer.toString, instrument)
-  }
-
-  def packageUserFiles(userFiles: Seq[(String, String)], instrument: String) = {
-    val packager = new ScalaJSPackager
-    val stringer = new StringWriter()
-    val printer = new PrintWriter(stringer)
-    val (_, _, preppedUserFiles) = prep(userFiles)
-    packager.packageScalaJS(
-      ScalaJSPackager.Inputs(
-        ScalaJSClasspathEntries(
-          VirtualJSFile.empty("scalajs-corejslib.js"),
+    else {
+      val things = for{
+        x <- vd.iterator.to[collection.immutable.Traversable]
+        if x.name.endsWith(".sjsir")
+      } yield {
+        val f =  new MemVirtualSerializedScalaJSIRFile("x.name")
+        f.content = x.toByteArray
+        f: VirtualScalaJSIRFile
+      }
+      Some(
+        new scala.scalajs.tools.classpath.PartialIRClasspath(
           Nil,
-          preppedUserFiles,
-          Nil
+          Map.empty,
+          things,
+          None
         )
-      ),
-      ScalaJSPackager.OutputConfig("extdeps.js", printer, None),
-      IgnoreLogger
-    )
-    Nontermination.instrument(stringer.toString, instrument)
-  }
-  
-  def deadCodeElimination(userFiles: Seq[(String, String)], instrument: String) = {
+      )
 
-    val (_, _, preppedUserFiles) = prep(userFiles)
-
-    val res = new ScalaJSOptimizer().optimize(
-      ScalaJSOptimizer.Inputs(
-        Classpath.scalajs.copy(classFiles = Classpath.scalajs.classFiles ++ preppedUserFiles)
-      ),
-      ScalaJSOptimizer.OutputConfig("output.js"),
-      Compiler.IgnoreLogger
-    )
-    Nontermination.instrument(res.output.content, instrument)
+    }
   }
 
-  def optimize(userFiles: Seq[(String, String)], instrument: String) = {
-    new ScalaJSClosureOptimizer().optimize(
-      ScalaJSClosureOptimizer.Inputs(
-        Seq(new VirtualJSFile {
-          def name = "Hello.js"
-          def content = Compiler.deadCodeElimination(userFiles, instrument)
-        })
-      ),
-      ScalaJSClosureOptimizer.OutputConfig(
-        name = "Hello-opt.js"
-      ),
-      Compiler.IgnoreLogger
-    ).output.content
+  def deadCodeElimination(userFiles: PartialIRClasspath) = {
+    new ScalaJSOptimizer().optimizeCP(
+      ScalaJSOptimizer.Inputs(Classpath.scalajs.merge(userFiles).resolve()),
+      ScalaJSOptimizer.OutputConfig(WritableMemVirtualJSFile("")),
+      Logger
+    )
+  }
+
+  def optimize(userFiles: PartialIRClasspath) = {
+    new ScalaJSClosureOptimizer().optimizeCP(
+      ScalaJSClosureOptimizer.Inputs(deadCodeElimination(userFiles)),
+      ScalaJSClosureOptimizer.OutputConfig(WritableMemVirtualJSFile("")),
+      Logger
+    )
   }
 
   object Logger extends scala.scalajs.tools.logging.Logger {

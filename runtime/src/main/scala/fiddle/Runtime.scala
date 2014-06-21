@@ -14,7 +14,8 @@ object Page extends scalajs.js.Object{
 
 
 object Stuff{
-  import scalatags.all._
+  import scalatags.JsDom.all._
+  import scalatags.JsDom._
   def red = span(color:="#ffaaaa")
   def blue = span(color:="#aaaaff")
   def green = span(color:="#aaffaa")

@@ -6,8 +6,8 @@ import org.scalajs.dom
 import scala.concurrent.{Promise, Future}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.runNow
 import scala.async.Async.{async, await}
-import scalatags.all._
-import scalatags._
+import scalatags.JsDom.all._
+import scalatags.JsDom._
 import rx._
 import scala.scalajs.js.annotation.JSExport
 import org.scalajs.dom.extensions.Ajax
@@ -74,7 +74,7 @@ class Client(){
         $s;
         ScalaJSExample().main();
       })""").asInstanceOf[js.Function1[js.Any, js.Any]](storedScalaJS)
-    }catch{case e =>
+    }catch{case e: Throwable =>
       Client.logError(e.toString())
     }
   }
