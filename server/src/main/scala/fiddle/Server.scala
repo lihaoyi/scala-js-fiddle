@@ -4,29 +4,14 @@ import spray.http._
 import spray.http.HttpHeaders._
 import spray.httpx.encoding.Gzip
 import spray.routing.directives.CachingDirectives._
-import scala.Some
-import spray.routing.{RequestContext, SimpleRoutingApp}
 import akka.actor.ActorSystem
 import spray.routing.directives.CacheKeyer
 import scala.collection.mutable
-import java.security.{AccessControlException, Permission}
-import java.io.FilePermission
-import java.util.PropertyPermission
-import java.lang.reflect.ReflectPermission
-import java.net.{InetAddress, SocketPermission}
-
 import spray.client.pipelining._
 
-import scala.concurrent.Future
-import scala.tools.nsc.interpreter.Completion
-import scala.reflect.internal.util.OffsetPosition
-import spray.http.HttpHeaders.`Cache-Control`
-import spray.http.CacheDirectives.{`max-age`, `public`}
 import spray.http.HttpRequest
-import spray.routing.RequestContext
 import scala.Some
 import spray.http.HttpResponse
-import spray.http.CacheDirectives.`max-age`
 import spray.routing._
 import upickle._
 import scala.scalajs.tools.classpath.PartialIRClasspath

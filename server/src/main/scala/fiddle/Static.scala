@@ -1,7 +1,7 @@
 package fiddle
 import acyclic.file
-import scalatags._
-import scalatags.all._
+import scalatags.Text._
+import scalatags.Text.all._
 object Static{
   val aceFiles = Seq(
     "/META-INF/resources/webjars/ace/07.31.2013/src-min/ace.js",
@@ -16,7 +16,7 @@ object Static{
     "<!DOCTYPE html>" + html(
       head(
         meta(charset:="utf-8"),
-        Tags2.title("Scala-Js-Fiddle"),
+        tags2.title("Scala-Js-Fiddle"),
 
         for(srcFile <- srcFiles ++ aceFiles) yield script(
           `type`:="text/javascript", src:=srcFile

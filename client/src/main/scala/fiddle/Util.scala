@@ -2,8 +2,6 @@ package fiddle
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
-import org.scalajs.dom
-
 
 case class Channel[T](){
   private[this] var value: Promise[T] = null

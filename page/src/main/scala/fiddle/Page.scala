@@ -5,7 +5,7 @@ import js.annotation.JSExport
 import org.scalajs.dom
 import scalatags.JsDom.all._
 import scalatags.JsDom._
-import scala.scalajs.js.Dynamic._
+
 
 /**
  * API for things that belong to the page, and are useful to both the fiddle

@@ -3,16 +3,14 @@ import acyclic.file
 import scala.scalajs.js
 import scala.scalajs.js.Dynamic.{literal => lit, _}
 import org.scalajs.dom
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.runNow
 import scala.async.Async.{async, await}
 import scalatags.JsDom.all._
 import scalatags.JsDom._
-import rx._
 import scala.scalajs.js.annotation.JSExport
 import org.scalajs.dom.extensions.Ajax
 import Page.fiddleUrl
-import scala.Some
 import JsVal.jsVal2jsAny
 import Client.RedLogger
 import scala.Some

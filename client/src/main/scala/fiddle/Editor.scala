@@ -1,14 +1,9 @@
 package fiddle
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.js
-import js.Dynamic.{literal => lit}
 import js.{Dynamic => Dyn}
 import scala.scalajs.js.Dynamic._
-import scala.Some
-import org.scalajs.dom
-import rx._
 import JsVal.jsVal2jsAny
-import org.scalajs.dom.extensions.KeyCode
 import scala.concurrent.Future
 import scala.async.Async.{async, await}
 

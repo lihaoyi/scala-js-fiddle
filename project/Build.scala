@@ -86,8 +86,8 @@ object Build extends sbt.Build{
         "org.scala-lang.modules.scalajs" % "scalajs-compiler_2.10.4" % "0.5.0",
         "org.scala-lang.modules.scalajs" %% "scalajs-tools" % "0.5.0",
         "org.scala-lang.modules" %% "scala-async" % "0.9.0" % "provided",
-        "com.scalatags" %% "scalatags" % "0.2.4",
-        "com.lihaoyi" %% "acyclic" % "0.1.1" % "provided",
+        "com.scalatags" %% "scalatags" % "0.3.0",
+        "com.lihaoyi" %% "acyclic" % "0.1.2" % "provided",
         "org.webjars" % "ace" % "07.31.2013",
         "org.webjars" % "jquery" % "2.1.0-2",
         "org.webjars" % "normalize.css" % "2.1.3",
@@ -100,7 +100,7 @@ object Build extends sbt.Build{
       testFrameworks += new TestFramework("utest.runner.JvmFramework"),
       javaOptions += "-XX:MaxPermSize=2g",
       javaOptions in Revolver.reStart += "-Xmx2g",
-      addCompilerPlugin("com.lihaoyi" %% "acyclic" % "0.1.1"),
+      addCompilerPlugin("com.lihaoyi" %% "acyclic" % "0.1.2"),
       autoCompilerPlugins := true
     )
 }

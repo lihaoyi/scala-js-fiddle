@@ -1,12 +1,11 @@
 package fiddle
 import acyclic.file
-import scala.tools.nsc.{Global, Settings}
-import java.net.{URL, URLClassLoader}
+import scala.tools.nsc.Settings
 import scala.reflect.io
 import scala.tools.nsc.util._
 import java.io._
 import akka.util.ByteString
-import scala.tools.nsc.reporters.{Reporter, ConsoleReporter}
+import scala.tools.nsc.reporters.ConsoleReporter
 import scala.tools.nsc.plugins.Plugin
 import scala.concurrent.Future
 import scala.async.Async.{async, await}
@@ -21,18 +20,10 @@ import scala.scalajs.tools.io._
 import scala.scalajs.tools.logging.Level
 
 import scala.tools.nsc.backend.JavaPlatform
-import scala.tools.util.PathResolver
-import scala.reflect.io._
 import scala.tools.nsc.util.ClassPath.JavaContext
-import scala.Some
 import scala.collection.mutable
-import java.util.zip.ZipInputStream
-import scala.annotation.tailrec
-import scala.Some
 import scala.tools.nsc.typechecker.Analyzer
-import scala.scalajs.tools.classpath.builder.PartialClasspathBuilder
 import scala.scalajs.tools.classpath.{CompleteNCClasspath, CompleteCIClasspath, PartialIRClasspath, PartialClasspath}
-import scala.scalajs.ir.Serializers
 import scala.Some
 
 /**
@@ -43,20 +34,6 @@ object Compiler{
   val prelude =
     Source.fromInputStream(getClass.getResourceAsStream("/Prelude.scala"))
           .mkString
-  object Nontermination{
-    val functionLiteral = "function\\([^\"\\n]*?\\) \\{(?=\\n)"
-    val whileTrue = "\\n[^\"\\n]*while \\(.*(?=\\n)"
-    val catchBlock = "\\n\\s*\\} catch.*(?=\\n)"
-    val finallyBlock = "\\n\\s*\\} finally \\{(?=\\n)"
-    def instrument(s: String, hook: String) = {
-      if (hook == "") s
-      else{
-        s"($functionLiteral|$whileTrue|$catchBlock|$finallyBlock)".r.replaceAllIn(
-          s, s"$$1\n\\$$$hook()\n"
-        )
-      }
-    }
-  }
 
   val blacklist = Seq("<init>")
 
