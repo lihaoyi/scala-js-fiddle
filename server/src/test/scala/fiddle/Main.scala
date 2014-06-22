@@ -19,8 +19,7 @@ object Main extends TestSuite{
   val tests = TestSuite {
     "compile" - {
       "simple" - {
-        val res = compile(
-          """
+        val res = compile("""
           object Main{
             def main() = {
               Predef.println("Hello World")
@@ -34,8 +33,7 @@ object Main extends TestSuite{
       }
 
       "macro" - {
-        val res = compile(
-          """
+        val res = compile("""
           object Main{
             def main() = {
               println("Hello World")
@@ -47,8 +45,7 @@ object Main extends TestSuite{
         }
       }
       "async" - {
-        val res = compile(
-          """
+        val res = compile("""
           import async.Async._
           import concurrent.Future
           import scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -68,8 +65,7 @@ object Main extends TestSuite{
 
     "optimize" - {
       "fastOpt" - {
-        val res = compile(
-          """
+        val res = compile("""
         @JSExport
         object Main{
           def iAmDead() = "lolzz"
@@ -92,8 +88,7 @@ object Main extends TestSuite{
         assert(res.length < 2 * 1024 * 1024)
       }
       "fullOpt" - {
-        val res = compile(
-          """
+        val res = compile("""
         @JSExport
         object Main{
           def iAmDead() = "lolzz"
@@ -113,8 +108,7 @@ object Main extends TestSuite{
           assert(!res.contains(s))
         }
         // fullOpt with such a small program should be less than 200kb
-        assert(res.length < 200 *
-          1024)
+        assert(res.length < 200 * 1024)
       }
       "crasher" - {
         compile(
@@ -123,13 +117,9 @@ object Main extends TestSuite{
             |object ScalaJSExample{
             |  @JSExport
             |  def main(): Unit = {
-            |    val xs = Seq(1, 2, 3)
-            |    val ys = Seq(1, 2, 3)
-            |    val zs = for{
-            |      x <- xs
-            |      y <- ys
-            |    } yield x + y
-            |    println(zs.toString)
+            |    val xs = Seq(1)
+            |    val ys = Seq(2)
+            |    xs.flatMap(x => ys.map(y => y))
             |  }
             |}
           """.stripMargin) |> Compiler.fastOpt
@@ -168,17 +158,13 @@ object Main extends TestSuite{
         }
         "scopes" - {
 
-          val snippet =
-
-            """
-
+          val snippet = """
             object Lul{
               def lol = "omg"
             }
             object Main{
               def zzzzx = 123;
             }
-
           """.replaceAll("\n *", "\n")
 
 
@@ -190,16 +176,11 @@ object Main extends TestSuite{
             ("object", true, false),
             ("{", false, false),
             (null, false, true)
-          ).foldLeft(0)(c(_).tupled(
-
-            _))
+          ).foldLeft(0)(c(_).tupled(_))
 
         }
         "members" - {
-          val snippet =
-
-            """
-
+          val snippet = """
             object Lul{
               def lol = "omg"
               Main. ;
@@ -207,7 +188,6 @@ object Main extends TestSuite{
             object Main{
               def zzzzx = 123;
             }
-
           """.replaceAll("\n *", "\n")
 
           val c = check(snippet, "member") _
@@ -221,8 +201,7 @@ object Main extends TestSuite{
             ("def", false, true),
             ("\n", false, false),
             (null, false, true)
-          ).foldLeft(0)(c(_).tupled(
-            _))
+          ).foldLeft(0)(c(_).tupled( _))
         }
       }
     }

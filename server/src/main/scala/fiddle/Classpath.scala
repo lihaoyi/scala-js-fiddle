@@ -87,38 +87,33 @@ object Classpath {
    */
   lazy val scalajs = {
     println("Loading scalaJSClassPath")
-    def builder = new AbstractJarLibClasspathBuilder{
-      def listFiles(d: File): Traversable[File] = Nil
-      def toJSFile(f: File): VirtualJSFile = {
+    class Builder extends AbstractJarLibClasspathBuilder{
+      def listFiles(d: File) = Nil
+      def toJSFile(f: File) = {
         val file = new MemVirtualJSFile(f._1)
         file.content = new String(f._2)
         file
       }
-
-      def toIRFile(f: File): VirtualScalaJSIRFile = {
+      def toIRFile(f: File) = {
         val file = new MemVirtualSerializedScalaJSIRFile(f._1)
         file.content = f._2
         file
       }
-      def isDirectory(f: File): Boolean = false
+      def isDirectory(f: File) = false
       type File = (String, Array[Byte])
-      def toInputStream(f: File): InputStream = new ByteArrayInputStream(f._2)
-      def isFile(f: File): Boolean = true
-      def getName(f: File): String = f._1
-
-      def isIRFile(f: File): Boolean = true
-
-      def getVersion(f: File): String = Random.nextInt().toString
-
-      def getAbsolutePath(f: File): String = f._1
-      def isJSFile(f: File): Boolean = false
-      def toReader(f: File): Reader = new InputStreamReader(new ByteArrayInputStream(f._2))
-
-      def isJARFile(f: File): Boolean = true
+      def toInputStream(f: File) = new ByteArrayInputStream(f._2)
+      def isFile(f: File) = true
+      def isJSFile(f: File) = f._1.endsWith(".js")
+      def isJARFile(f: File) = f._1.endsWith(".jar")
+      def getName(f: File) = f._1
+      def isIRFile(f: File) = f._1.endsWith(".sjsir")
+      def getVersion(f: File) = Random.nextInt().toString
+      def getAbsolutePath(f: File) = f._1
+      def toReader(f: File) = new InputStreamReader(toInputStream(f))
     }
 
-    val res = loadedFiles.map(x => builder.build(x))
-                         .reduce(_ merge _)
+    val res = loadedFiles.map(new Builder().build(_))
+                         .reduceLeft(_ merge _)
     println("Loaded scalaJSClassPath")
     res
   }
