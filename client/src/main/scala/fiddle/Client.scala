@@ -248,7 +248,6 @@ object Client{
       "..."
     )
     Ajax.get("https://api.github.com/gists/" + gistId).map{ res =>
-
       val result = JsVal.parse(res.responseText)
       val mainFile = result("files").get(file.getOrElse(""))
       val firstFile = result("files").values(0)

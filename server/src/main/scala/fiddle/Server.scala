@@ -72,11 +72,7 @@ object Server extends SimpleRoutingApp {
               compileStuff(_, _ |> Compiler.fastOpt |> Compiler.export)
             } ~
             path("fullOpt"){
-              def write(s: String) = {
-                val pw = new java.io.PrintWriter(new java.io.File("optimized.js"))
-                try pw.write(s) finally pw.close()
-              }
-              compileStuff(_, _ |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export |> {x => write(x); x})
+              compileStuff(_, _ |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export)
             } ~
             path("export"){
               formFields("compiled", "source"){
