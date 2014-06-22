@@ -66,11 +66,9 @@ object Main extends TestSuite{
     "optimize" - {
       "fastOpt" - {
         val res = compile("""
-        @JSExport
-        object Main{
+        object Main extends js.JSApp{
           def iAmDead() = "lolzz"
           def iAmLive() = "wtfff"
-          @JSExport
           def main() = {
             Predef.println("Hello World")
             iAmLive()
@@ -89,11 +87,9 @@ object Main extends TestSuite{
       }
       "fullOpt" - {
         val res = compile("""
-        @JSExport
-        object Main{
+        object Main extends js.JSApp{
           def iAmDead() = "lolzz"
           def iAmLive() = "wtfff"
-          @JSExport
           def main() = {
             Predef.println("Hello World")
             iAmLive()
@@ -113,9 +109,7 @@ object Main extends TestSuite{
       "crasher" - {
         compile(
           """
-            |@JSExport
-            |object ScalaJSExample{
-            |  @JSExport
+            |object ScalaJSExample extends js.JSApp{
             |  def main(): Unit = {
             |    val xs = Seq(1)
             |    val ys = Seq(2)

@@ -31,10 +31,6 @@ import scala.Some
  * scalac/scalajs-tools to compile and optimize code submitted by users.
  */
 object Compiler{
-  val prelude =
-    Source.fromInputStream(getClass.getResourceAsStream("/Prelude.scala"))
-          .mkString
-
   val blacklist = Seq("<init>")
 
   /**
@@ -134,8 +130,8 @@ object Compiler{
       def dirs = jDirs
     }
 
-    val file      = new BatchSourceFile(makeFile(prelude.getBytes ++ code.getBytes), prelude + code)
-    val position  = new OffsetPosition(file, pos + prelude.length)
+    val file      = new BatchSourceFile(makeFile(Shared.prelude.getBytes ++ code.getBytes), Shared.prelude + code)
+    val position  = new OffsetPosition(file, pos + Shared.prelude.length)
 
     await(toFuture[Unit](compiler.askReload(List(file), _)))
 
@@ -161,7 +157,7 @@ object Compiler{
 
   def compile(src: Array[Byte], logger: String => Unit = _ => ()): Option[PartialIRClasspath] = {
 
-    val singleFile = makeFile(prelude.getBytes ++ src)
+    val singleFile = makeFile(Shared.prelude.getBytes ++ src)
 
     val (settings, reporter, vd, jCtx, jDirs) = initGlobalBits(logger)
     val compiler = new nsc.Global(settings, reporter) with InMemoryGlobal{
@@ -178,7 +174,7 @@ object Compiler{
         x <- vd.iterator.to[collection.immutable.Traversable]
         if x.name.endsWith(".sjsir")
       } yield {
-        val f =  new MemVirtualSerializedScalaJSIRFile("x.name")
+        val f =  new MemVirtualSerializedScalaJSIRFile(x.path)
         f.content = x.toByteArray
         f: VirtualScalaJSIRFile
       }

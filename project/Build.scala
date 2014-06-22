@@ -20,38 +20,42 @@ object Build extends sbt.Build{
         (assembly in (server, Compile)).value
       },
       (resources in (server, Compile)) ++= {
-        (fastOptJS in (client, Compile)).value
+//        (fastOptJS in (client, Compile)).value
         (managedClasspath in (runtime, Compile)).value.map(_.data) ++ Seq(
           (packageBin in (runtime, Compile)).value,
           (packageBin in (page, Compile)).value,
+          (packageBin in (shared, Compile)).value,
           (artifactPath in (client, Compile, fastOptJS)).value
         )
       },
-      scalaVersion := "2.10.3"
+      scalaVersion := "2.10.4"
     )
+  lazy val shared = project.in(file("shared")).settings(scalaJSSettings:_*)
+
   lazy val client = project
-    .dependsOn(page)
+    .dependsOn(page, shared)
     .settings(scalaJSSettings:_*)
     .settings(
       libraryDependencies ++= Seq(
         "org.scala-lang.modules.scalajs" %%% "scalajs-dom" % "0.6",
-        "com.scalatags" %%% "scalatags" % "0.3.0",
+        "com.scalatags" %%% "scalatags" % "0.3.2",
         "com.scalarx" %%% "scalarx" % "0.2.5",
         "com.lihaoyi" %%% "upickle" % "0.1.2",
-        "org.scala-lang.modules" %% "scala-async" % "0.9.0" % "provided",
-        "com.lihaoyi" %% "acyclic" % "0.1.1" % "provided"
+        "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
+        "com.lihaoyi" %% "acyclic" % "0.1.2" % "provided"
       ),
       (SbtStartScript.stage in Compile) := (fullOptJS in Compile).value,
       relativeSourceMaps := true,
-      addCompilerPlugin("com.lihaoyi" %% "acyclic" % "0.1.1"),
+      addCompilerPlugin("com.lihaoyi" %% "acyclic" % "0.1.2"),
       autoCompilerPlugins := true
     )
   lazy val page = project
+    .dependsOn(shared)
     .settings(scalaJSSettings:_*)
     .settings(
       libraryDependencies ++= Seq(
         "org.scala-lang.modules.scalajs" %%% "scalajs-dom" % "0.6",
-        "com.scalatags" %%% "scalatags" % "0.3.0"
+        "com.scalatags" %%% "scalatags" % "0.3.2"
       )
     )
   lazy val runtime = project
@@ -60,41 +64,34 @@ object Build extends sbt.Build{
     .settings(
       resolvers += Resolver.sonatypeRepo("snapshots"),
       libraryDependencies ++= Seq(
-        "org.scala-lang" % "scala-reflect" % "2.10.3",
-        "org.scalamacros" % "quasiquotes_2.10.3" % "2.0.0-M3",
+        "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+        "org.scalamacros" %% "quasiquotes" % "2.0.0",
         "org.scala-lang.modules.scalajs" %%% "scalajs-dom" % "0.6",
-        "com.scalatags" %%% "scalatags" % "0.3.0",
-        "org.scala-lang.modules" %% "scala-async" % "0.9.0" % "provided",
+        "com.scalatags" %%% "scalatags" % "0.3.2",
+        "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
         "com.scalarx" %%% "scalarx" % "0.2.5"/*,
         "com.nativelibs4java" %% "scalaxy-loops" % "0.3-SNAPSHOT"*/
       ),
-      addCompilerPlugin("org.scalamacros" % "paradise_2.10.3" % "2.0.0-M3"),
+      addCompilerPlugin("org.scalamacros" % s"paradise_2.10.4" % "2.0.0"),
       autoCompilerPlugins := true
     )
 
   lazy val server = project
+    .dependsOn(shared)
     .settings(assemblySettings ++ Revolver.settings ++ SbtStartScript.startScriptForClassesSettings:_*)
     .settings(
-      resolvers += Resolver.url("scala-js-releases",
-        url("http://dl.bintray.com/content/scala-js/scala-js-releases"))(
-          Resolver.ivyStylePatterns),
-
-      resolvers += Resolver.url("scala-js-snapshots",
-        url("http://repo.scala-js.org/repo/snapshots/"))(
-        Resolver.ivyStylePatterns),
-
       libraryDependencies ++= Seq(
-        "org.scala-lang" % "scala-compiler" % "2.10.3",
+        "org.scala-lang" % "scala-compiler" % scalaVersion.value,
         "com.typesafe.akka" %% "akka-actor" % "2.3.0",
         "io.spray" % "spray-can" % "1.3.1",
         "io.spray" % "spray-client" % "1.3.1",
         "io.spray" % "spray-caching" % "1.3.1",
         "io.spray" % "spray-httpx" % "1.3.1",
         "io.spray" % "spray-routing" % "1.3.1",
-        "org.scala-lang.modules.scalajs" % "scalajs-compiler_2.10.4" % "0.5.0",
+        "org.scala-lang.modules.scalajs" % s"scalajs-compiler_${scalaVersion.value}" % "0.5.0",
         "org.scala-lang.modules.scalajs" %% "scalajs-tools" % "0.5.0",
-        "org.scala-lang.modules" %% "scala-async" % "0.9.0" % "provided",
-        "com.scalatags" %% "scalatags" % "0.3.0",
+        "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
+        "com.scalatags" %% "scalatags" % "0.3.2",
         "com.lihaoyi" %% "acyclic" % "0.1.2" % "provided",
         "org.webjars" % "ace" % "07.31.2013",
         "org.webjars" % "jquery" % "2.1.0-2",

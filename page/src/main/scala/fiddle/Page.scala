@@ -12,7 +12,10 @@ import scalatags.JsDom._
  */
 @JSExport
 object Page{
-  val fiddleUrl = "http://www.scala-js-fiddle.com"
+  val fiddlePrelude = Shared.prelude
+  val fiddleUrl = Shared.url
+  val fiddleGistId = Shared.gistId
+
   def red = span(color:="#ffaaaa")
   def blue = span(color:="#aaaaff")
   def green = span(color:="#aaffaa")
@@ -24,11 +27,11 @@ object Page{
   def logspam = Util.getElem[dom.HTMLPreElement]("logspam")
   def source = Util.getElem[dom.HTMLDivElement]("source")
 
-  def println(ss: Node*) = {
+  def println(ss: Modifier*) = {
     print(div(ss: _*))
   }
 
-  def print(ss: Node*) = {
+  def print(ss: Modifier*) = {
     ss.foreach(_.applyTo(output))
     output.scrollTop = output.scrollHeight - output.clientHeight
   }
@@ -44,11 +47,11 @@ object Page{
   
   def page = this
 
-  def logln(s: Node*): Unit = {
+  def logln(s: Modifier*): Unit = {
     log(div(s:_*))
   }
 
-  def log(s: Node*): Unit = {
+  def log(s: Modifier*): Unit = {
     s.foreach(_.applyTo(logspam))
     logspam.scrollTop = 1000000000
   }
@@ -63,7 +66,7 @@ object Page{
     js.Dynamic.global.require("ace")
     editor.innerHTML = highlight(source.textContent, "ace/mode/scala")
     if(logspam.textContent == "") {
-      logln("- Code snippet exported from ", a(href := fiddleUrl, fiddleUrl))
+      logln("- Code snippet exported from ", a(href := fiddle.Shared.url, fiddle.Shared.url))
       logln("- ", blue("Ctrl/Cmd-S"), " and select ", blue("Web Page, Complete"), " to save for offline use")
       logln("- Click ", a(id := "editLink", href := "javascript:", "here"), " to edit a copy online")
     }
@@ -71,7 +74,7 @@ object Page{
        .getElementById("editLink")
        .asInstanceOf[dom.HTMLAnchorElement]
        .onclick = { (e: dom.MouseEvent) =>
-      Util.Form.post("http://localhost:8080/import",
+      Util.Form.post(fiddle.Shared.url + "/import",
         "source" -> source.textContent,
         "compiled" -> compiled
       )

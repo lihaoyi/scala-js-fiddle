@@ -10,7 +10,7 @@ import scalatags.JsDom.all._
 import scalatags.JsDom._
 import scala.scalajs.js.annotation.JSExport
 import org.scalajs.dom.extensions.{AjaxException, Ajax}
-import Page.fiddleUrl
+
 import JsVal.jsVal2jsAny
 import Client.RedLogger
 import scala.Some
@@ -69,8 +69,9 @@ class Client(){
         console.log("THIS", this)
         $s;
         ScalaJSExample().main();
-      })()""")
+      }).call(window)""")
     }catch{case e: Throwable =>
+      Client.logError(e.getStackTraceString)
       Client.logError(e.toString())
     }
   }
@@ -99,7 +100,7 @@ class Client(){
   ), complete, RedLogger)
 
   logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-Space"), " for autocomplete.")
-  logln("- Go to ", a(href:=fiddleUrl, fiddleUrl), " to find out more.")
+  logln("- Go to ", a(href:=fiddle.Shared.url, fiddle.Shared.url), " to find out more.")
 
   def compile(code: String, endpoint: String): Future[Option[String]] = {
     if (code == "") Future(None)
@@ -215,7 +216,7 @@ object Client{
     dom.console.log("gistMain")
     Editor.initEditor
     val (gistId, fileName) = args.toSeq match{
-      case Nil => ("9759723", Some("LandingPage.scala"))
+      case Nil => (fiddle.Shared.gistId, Some("LandingPage.scala"))
       case Seq(g) => (g, None)
       case Seq(g, f) => (g, Some(f))
     }
@@ -250,16 +251,7 @@ object Client{
       val mainFile = result("files").get(file.getOrElse(""))
       val firstFile = result("files").values(0)
       mainFile.getOrElse(firstFile)("content").asString
-    }.recover{case e =>
-      """
-        |import scalajs.js
-        |object ScalaJSExample extends js.JSApp{
-        |  def main(): Unit = {
-        |    println("Looks like there was an error loading the default Gist!")
-        |    println("Loading an empty application so you can get started")
-        |  }
-        |}
-      """.stripMargin}
+    }.recover{case e => fiddle.Shared.default}
 
   }
   def scheduleResets() = {
