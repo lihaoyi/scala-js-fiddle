@@ -38,6 +38,8 @@ object Page{
 
   def clear() = {
     output.innerHTML = ""
+    canvas.height = sandbox.clientHeight
+    canvas.width = sandbox.clientWidth
   }
 
   def scroll(px: Int) = {

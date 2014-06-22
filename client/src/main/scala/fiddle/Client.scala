@@ -208,9 +208,6 @@ object Client{
   def clear() = {
     clearTimeouts()
     Page.clear()
-
-    canvas.height = sandbox.clientHeight
-    canvas.width = sandbox.clientWidth
   }
 
   @JSExport
