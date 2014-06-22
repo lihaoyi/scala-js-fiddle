@@ -20,7 +20,7 @@ object Build extends sbt.Build{
         (assembly in (server, Compile)).value
       },
       (resources in (server, Compile)) ++= {
-//        (fastOptJS in (client, Compile)).value
+        (fastOptJS in (client, Compile)).value
         (managedClasspath in (runtime, Compile)).value.map(_.data) ++ Seq(
           (packageBin in (runtime, Compile)).value,
           (packageBin in (page, Compile)).value,
@@ -38,7 +38,7 @@ object Build extends sbt.Build{
     .settings(
       libraryDependencies ++= Seq(
         "org.scala-lang.modules.scalajs" %%% "scalajs-dom" % "0.6",
-        "com.scalatags" %%% "scalatags" % "0.3.2",
+        "com.scalatags" %%% "scalatags" % "0.3.4",
         "com.scalarx" %%% "scalarx" % "0.2.5",
         "com.lihaoyi" %%% "upickle" % "0.1.2",
         "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
@@ -55,7 +55,7 @@ object Build extends sbt.Build{
     .settings(
       libraryDependencies ++= Seq(
         "org.scala-lang.modules.scalajs" %%% "scalajs-dom" % "0.6",
-        "com.scalatags" %%% "scalatags" % "0.3.2"
+        "com.scalatags" %%% "scalatags" % "0.3.4"
       )
     )
   lazy val runtime = project
@@ -67,10 +67,10 @@ object Build extends sbt.Build{
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
         "org.scalamacros" %% "quasiquotes" % "2.0.0",
         "org.scala-lang.modules.scalajs" %%% "scalajs-dom" % "0.6",
-        "com.scalatags" %%% "scalatags" % "0.3.2",
+        "com.scalatags" %%% "scalatags" % "0.3.4",
         "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
-        "com.scalarx" %%% "scalarx" % "0.2.5"/*,
-        "com.nativelibs4java" %% "scalaxy-loops" % "0.3-SNAPSHOT"*/
+        "com.scalarx" %%% "scalarx" % "0.2.5",
+        "com.nativelibs4java" %% "scalaxy-loops" % "0.3-SNAPSHOT"
       ),
       addCompilerPlugin("org.scalamacros" % s"paradise_2.10.4" % "2.0.0"),
       autoCompilerPlugins := true
@@ -91,7 +91,7 @@ object Build extends sbt.Build{
         "org.scala-lang.modules.scalajs" % s"scalajs-compiler_${scalaVersion.value}" % "0.5.0",
         "org.scala-lang.modules.scalajs" %% "scalajs-tools" % "0.5.0",
         "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
-        "com.scalatags" %% "scalatags" % "0.3.2",
+        "com.scalatags" %% "scalatags" % "0.3.4",
         "com.lihaoyi" %% "acyclic" % "0.1.2" % "provided",
         "org.webjars" % "ace" % "07.31.2013",
         "org.webjars" % "jquery" % "2.1.0-2",

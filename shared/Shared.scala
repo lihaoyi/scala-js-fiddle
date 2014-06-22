@@ -6,7 +6,6 @@ object Shared{
       |import scalatags.JsDom._
       |import org.scalajs.dom
       |import scalajs.js
-      |
     """.stripMargin
 
   val default = """

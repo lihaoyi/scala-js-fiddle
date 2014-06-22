@@ -194,13 +194,13 @@ object Compiler{
       p,
       ScalaJSPackager.OutputConfig(WritableMemVirtualJSFile("")),
       Compiler.Logger
-    ).scalaJSCode.map(_.content).mkString
+    ).scalaJSCode.map(_.content).mkString("\n\n")
   }
   def export(p: CompleteCIClasspath) = {
-    p.allCode.map(_.content).mkString
+    p.allCode.map(_.content).mkString("\n\n")
   }
   def export(p: CompleteNCClasspath) = {
-    p.allCode.map(_.content).mkString
+    p.allCode.map(_.content).mkString("\n\n")
   }
 
   def fastOpt(userFiles: PartialIRClasspath): CompleteCIClasspath = {

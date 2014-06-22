@@ -65,18 +65,16 @@ class Client(){
 
     Checker.reset(1000)
     try{
-      js.eval(s"""(function(){
-        console.log("THIS", this)
-        $s;
-        ScalaJSExample().main();
-      }).call(window)""")
+      js.eval(s)
+      js.eval("ScalaJSExample().main()")
+
     }catch{case e: Throwable =>
       Client.logError(e.getStackTraceString)
       Client.logError(e.toString())
     }
   }
   val instrument = "c"
-  var compileEndpoint = s"/fastOpt"
+
   val compilationLoop = task*async{
     val (code, cmd) = await(command())
     await(compile(code, cmd)).foreach(exec)
@@ -90,7 +88,7 @@ class Client(){
   }
 
   val editor: Editor = new Editor(Seq(
-    ("Compile", "Enter", () => command.update((editor.code, compileEndpoint))),
+    ("Compile", "Enter", () => command.update((editor.code, "/fastOpt"))),
     ("FullOptimize", "Shift-Enter", () => command.update((editor.code, "/fullOpt"))),
     ("Save", "S", save _),
     ("Complete", "Space", () => editor.complete()),
@@ -107,16 +105,20 @@ class Client(){
     else {
       log(s"Compiling with $endpoint... ")
       Ajax.post(endpoint, code).map { res =>
-        val result = JsVal.parse(res.responseText)
-        if (result("logspam").asString != "") {
-          logln(result("logspam").asString)
+        import upickle.{Js, Json}
+        val js = Json.read(res.responseText)
+
+        if (js("logspam") != Js.String("")) {
+          logln(js("logspam").value.toString)
         }
-        if (result("success").asBoolean) log(green("Success"))
+        if (js("success") == Js.True) log(green("Success"))
         else log(red("Failure"))
         logln()
-        result.get("code").map(_.asString)
+
+        Some(js("code").value.toString)
       }.recover{case e: Exception =>
-        logln(red(e.toString))
+        Client.logError(e.getStackTraceString)
+        Client.logError(e.toString)
         None
       }
 
@@ -224,7 +226,7 @@ object Client{
     val src = await(load(gistId, fileName))
     val client = new Client()
     client.editor.sess.setValue(src)
-    client.command.update((src, "/fastOpt"))
+    client.command.update((src, "/fullOpt"))
   }
 
   @JSExport
