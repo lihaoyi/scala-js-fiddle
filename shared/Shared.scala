@@ -2,9 +2,10 @@ package fiddle
 object Shared{
   val prelude =
     """
-      |import fiddle.Page._
-      |import scalatags.JsDom._
+      |import scalatags.JsDom.all._
       |import org.scalajs.dom
+      |import fiddle.Page
+      |import Page.{red, green, blue, println}
       |import scalajs.js
     """.stripMargin
 

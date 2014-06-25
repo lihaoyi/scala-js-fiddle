@@ -6,7 +6,7 @@ import scala.scalajs.js.Dynamic._
 import JsVal.jsVal2jsAny
 import scala.concurrent.Future
 import scala.async.Async.{async, await}
-
+import Page._
 /**
  * Everything related to setting up the Ace editor to
  * do exactly what we want.

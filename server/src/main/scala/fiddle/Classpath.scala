@@ -29,7 +29,7 @@ object Classpath {
         "/scala-reflect-2.10.4.jar",
         "/scalajs-library_2.10-0.5.0.jar",
         "/scalajs-dom_sjs0.5_2.10-0.6.jar",
-        "/scalatags_sjs0.5_2.10-0.3.4.jar",
+        "/scalatags_sjs0.5_2.10-0.3.8.jar",
         "/scalarx_sjs0.5_2.10-0.2.5.jar",
         "/scala-async_2.10-0.9.1.jar",
         "/scalaxy-loops_2.10-0.3-SNAPSHOT.jar",

@@ -1,7 +1,7 @@
 package fiddle
 import acyclic.file
-import scalatags.Text._
 import scalatags.Text.all._
+import scalatags.Text.tags2
 object Static{
   val aceFiles = Seq(
     "/META-INF/resources/webjars/ace/07.31.2013/src-min/ace.js",

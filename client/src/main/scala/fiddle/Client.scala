@@ -7,10 +7,9 @@ import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.runNow
 import scala.async.Async.{async, await}
 import scalatags.JsDom.all._
-import scalatags.JsDom._
 import scala.scalajs.js.annotation.JSExport
 import org.scalajs.dom.extensions.{AjaxException, Ajax}
-
+import Page._
 import JsVal.jsVal2jsAny
 import Client.RedLogger
 import scala.Some
@@ -55,7 +54,7 @@ object Checker{
 }
 
 class Client(){
-  import Page.{log, logln, red, blue, green}
+
   Client.scheduleResets()
   val command = Channel[(String, String)]()
 
@@ -111,11 +110,16 @@ class Client(){
         if (js("logspam") != Js.String("")) {
           logln(js("logspam").value.toString)
         }
-        if (js("success") == Js.True) log(green("Success"))
-        else log(red("Failure"))
-        logln()
+        if (js("success") == Js.True) {
+          log(green("Success"))
+          logln()
+          Some(js("code").value.toString)
+        } else {
+          log(red("Failure"))
+          logln()
+          None
+        }
 
-        Some(js("code").value.toString)
       }.recover{case e: Exception =>
         Client.logError(e.getStackTraceString)
         Client.logError(e.toString)
@@ -186,7 +190,7 @@ class Client(){
 @JSExport
 object Client{
   implicit val RedLogger = new Logger(logError)
-  import Page.{canvas, sandbox, logln, red, blue, green}
+
   dom.onerror = ({(event: dom.Event, source: js.String, fileno: js.Number, columnNumber: js.Number) =>
     dom.console.log("dom.onerror")
     Client.logError(event.toString())

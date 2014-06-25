@@ -4,7 +4,6 @@ import scala.scalajs.js
 import js.annotation.JSExport
 import org.scalajs.dom
 import scalatags.JsDom.all._
-import scalatags.JsDom._
 
 /**
  * API for things that belong to the page, and are useful to both the fiddle
@@ -19,6 +18,7 @@ object Page{
   def red = span(color:="#ffaaaa")
   def blue = span(color:="#aaaaff")
   def green = span(color:="#aaffaa")
+
 
   def sandbox = Util.getElem[dom.HTMLDivElement]("sandbox")
   def canvas = Util.getElem[dom.HTMLCanvasElement]("canvas")
@@ -46,8 +46,6 @@ object Page{
     dom.console.log("Scrolling", px)
     output.scrollTop = output.scrollTop + px
   }
-  
-  def page = this
 
   def logln(s: Modifier*): Unit = {
     log(div(s:_*))
@@ -101,5 +99,7 @@ object Page{
     )
     dom.importCssString(highlighted.css, "ace_highlight")
     highlighted.html.toString
+
   }
+
 }
