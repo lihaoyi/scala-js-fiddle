@@ -25,21 +25,24 @@ object Classpath {
     println("Loading files...")
     val jarFiles = for {
       name <- Seq(
-        "/scala-library-2.10.4.jar",
-        "/scala-reflect-2.10.4.jar",
-        "/scalajs-library_2.10-0.5.0.jar",
-        "/scalajs-dom_sjs0.5_2.10-0.6.jar",
-        "/scalatags_sjs0.5_2.10-0.3.8.jar",
-        "/scalarx_sjs0.5_2.10-0.2.5.jar",
-        "/scala-async_2.10-0.9.1.jar",
-        "/scalaxy-loops_2.10-0.3-SNAPSHOT.jar",
-        "/runtime_sjs0.5_2.10-0.1-SNAPSHOT.jar",
-        "/page_sjs0.5_2.10-0.1-SNAPSHOT.jar",
-        "/shared_sjs0.5_2.10-0.1-SNAPSHOT.jar"
+        "/scala-library-2.11.1.jar",
+        "/scala-reflect-2.11.1.jar",
+        "/scalajs-library_2.11-0.5.0.jar",
+        "/scalajs-dom_sjs0.5_2.11-0.6.jar",
+        "/scalatags_sjs0.5_2.11-0.3.8.jar",
+        "/scalarx_sjs0.5_2.11-0.2.5.jar",
+        "/scala-async_2.11-0.9.1.jar",
+        "/scalaxy-loops_2.11-0.1.1.jar",
+        "/runtime_sjs0.5_2.11-0.1-SNAPSHOT.jar",
+        "/page_sjs0.5_2.11-0.1-SNAPSHOT.jar",
+        "/shared_sjs0.5_2.11-0.1-SNAPSHOT.jar"
       )
     } yield {
       val stream = getClass.getResourceAsStream(name)
       println("Loading file" + name + ": " + stream)
+      if (stream == null) {
+        throw new Exception(s"Classpath loading failed, jar $name not found")
+      }
       name -> Streamable.bytes(stream)
     }
 

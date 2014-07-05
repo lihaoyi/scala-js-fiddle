@@ -14,6 +14,7 @@ import scala.Some
 import spray.http.HttpResponse
 import spray.routing._
 import upickle._
+import upickle.Implicits._
 import scala.scalajs.tools.classpath.PartialIRClasspath
 
 object Server extends SimpleRoutingApp {

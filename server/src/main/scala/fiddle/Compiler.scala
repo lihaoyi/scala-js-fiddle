@@ -11,7 +11,7 @@ import scala.concurrent.Future
 import scala.async.Async.{async, await}
 import concurrent.ExecutionContext.Implicits.global
 import scala.reflect.internal.util.{BatchSourceFile, OffsetPosition}
-import scala.tools.nsc.interactive.Response
+import scala.tools.nsc.interactive.{InteractiveAnalyzer, Response}
 import scala.tools.nsc
 import scala.scalajs.tools.packager.ScalaJSPackager
 import scala.io.Source
@@ -53,6 +53,27 @@ object Compiler{
     singleFile
   }
 
+  def inMemClassloader = {
+    new ClassLoader(this.getClass.getClassLoader){
+      val classCache = mutable.Map.empty[String, Option[Class[_]]]
+      override def findClass(name: String): Class[_] = {
+        val fileName = name.replace('.', '/') + ".class"
+        val res = classCache.getOrElseUpdate(
+          name,
+          Classpath.scalac
+            .map(_.lookupPathUnchecked(fileName, false))
+            .find(_ != null).map{f =>
+            val data = f.toByteArray
+            this.defineClass(name, data, 0, data.length)
+          }
+        )
+        res match{
+          case None => throw new ClassNotFoundException()
+          case Some(cls) => cls
+        }
+      }
+    }
+  }
   /**
    * Mixed in to make a Scala compiler run entirely in-memory,
    * loading its classpath and running macros from pre-loaded
@@ -64,31 +85,9 @@ object Compiler{
     override lazy val plugins = List[Plugin](new scala.scalajs.compiler.ScalaJSPlugin(this))
     override lazy val platform: ThisPlatform = new JavaPlatform{
       val global: g.type = g
-      override def classPath: ClassPath[BinaryRepr] = new JavaClassPath(dirs, ctx)
+      override def classPath = new JavaClassPath(dirs, ctx)
     }
-    override lazy val analyzer = new {
-      val global: g.type = g
-    } with Analyzer{
-      override lazy val macroClassloader = new ClassLoader(this.getClass.getClassLoader){
-        val classCache = mutable.Map.empty[String, Option[Class[_]]]
-        override def findClass(name: String): Class[_] = {
-          val fileName = name.replace('.', '/') + ".class"
-          val res = classCache.getOrElseUpdate(
-            name,
-            Classpath.scalac
-              .map(_.lookupPath(fileName, false))
-              .find(_ != null).map{f =>
-              val data = f.toByteArray
-              this.defineClass(name, data, 0, data.length)
-            }
-          )
-          res match{
-            case None => throw new ClassNotFoundException()
-            case Some(cls) => cls
-          }
-        }
-      }
-    }
+
   }
 
   /**
@@ -125,9 +124,14 @@ object Compiler{
 
     // global can be reused, just create new runs for new compiler invocations
     val (settings, reporter, vd, jCtx, jDirs) = initGlobalBits(_ => ())
-    val compiler = new nsc.interactive.Global(settings, reporter) with InMemoryGlobal{
+    val compiler = new nsc.interactive.Global(settings, reporter) with InMemoryGlobal { g =>
       def ctx = jCtx
       def dirs = jDirs
+      override lazy val analyzer = new {
+        val global: g.type = g
+      } with InteractiveAnalyzer {
+        override def findMacroClassLoader() = inMemClassloader
+      }
     }
 
     val file      = new BatchSourceFile(makeFile(Shared.prelude.getBytes ++ code.getBytes), Shared.prelude + code)
@@ -160,9 +164,14 @@ object Compiler{
     val singleFile = makeFile(Shared.prelude.getBytes ++ src)
 
     val (settings, reporter, vd, jCtx, jDirs) = initGlobalBits(logger)
-    val compiler = new nsc.Global(settings, reporter) with InMemoryGlobal{
+    val compiler = new nsc.Global(settings, reporter) with InMemoryGlobal{ g =>
       def ctx = jCtx
       def dirs = jDirs
+      override lazy val analyzer = new {
+        val global: g.type = g
+      } with Analyzer{
+        override def findMacroClassLoader() = inMemClassloader
+      }
     }
 
     val run = new compiler.Run()
