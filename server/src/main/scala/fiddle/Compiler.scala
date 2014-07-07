@@ -119,9 +119,6 @@ object Compiler{
   }
 
   def autocomplete(code: String, flag: String, pos: Int): Future[List[(String, String)]] = async {
-
-
-
     // global can be reused, just create new runs for new compiler invocations
     val (settings, reporter, vd, jCtx, jDirs) = initGlobalBits(_ => ())
     val compiler = new nsc.interactive.Global(settings, reporter) with InMemoryGlobal { g =>

@@ -12,7 +12,7 @@ import Page._
  * do exactly what we want.
  */
 class Editor(bindings: Seq[(String, String, () => Any)],
-             completions: () => Future[Seq[Seq[String]]],
+             completions: () => Future[Seq[(String, String)]],
              implicit val logger: Logger){
   lazy val Autocomplete = js.Dynamic.global.require("ace/autocomplete").Autocomplete
   def sess = editor.getSession()
@@ -50,7 +50,7 @@ class Editor(bindings: Seq[(String, String, () => Any)],
 
     editor.completers = js.Array(JsVal.obj(
       "getCompletions" -> {(editor: Dyn, session: Dyn, pos: Dyn, prefix: Dyn, callback: Dyn) => task*async{
-        val things = await(completions()).map{ case Seq(name, value) =>
+        val things = await(completions()).map{ case (name, value) =>
           JsVal.obj(
             "value" -> value,
             "caption" -> (value + name)

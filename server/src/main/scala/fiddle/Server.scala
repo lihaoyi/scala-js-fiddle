@@ -16,17 +16,20 @@ import spray.routing._
 import upickle._
 import upickle.Implicits._
 import scala.scalajs.tools.classpath.PartialIRClasspath
+import scala.annotation.{ClassfileAnnotation, StaticAnnotation, Annotation}
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
-object Server extends SimpleRoutingApp {
+object Server extends SimpleRoutingApp with Api{
   implicit val system = ActorSystem()
   import system.dispatcher
+  val clientFiles = Seq("/client-fastopt.js")
 
   def main(args: Array[String]): Unit = {
     implicit val Default: CacheKeyer = CacheKeyer {
       case RequestContext(HttpRequest(_, uri, _, entity, _), _, _) => (uri, entity)
     }
 
-    val clientFiles = Seq("/client-fastopt.js")
     val simpleCache = routeCache(maxCapacity = 1000)
     println("Power On Self Test")
     val res = Compiler.compile(fiddle.Shared.default.getBytes, println)
@@ -66,88 +69,46 @@ object Server extends SimpleRoutingApp {
             getFromResourceDirectory("")
           } ~
           post {
-            path("compile"){
-              compileStuff(_, _ |> Compiler.export)
-            } ~
-            path("fastOpt"){
-              compileStuff(_, _ |> Compiler.fastOpt |> Compiler.export)
-            } ~
-            path("fullOpt"){
-              compileStuff(_, _ |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export)
-            } ~
-            path("export"){
-              formFields("compiled", "source"){
-                renderCode(_, Nil, _, "Page().exportMain(); ScalaJSExample().main();", analytics = false)
+            path("api" / Segments){ s =>
+              extract(_.request.entity.asString) { e =>
+                complete {
+                  autowire.Macros.route[Web](Server)(
+                    autowire.Request(s, upickle.read[Map[String, String]](e))
+                  )
+                }
               }
-            } ~
-            path("import"){
-              formFields("compiled", "source"){
-                renderCode(_, clientFiles, _, "Client().importMain(); ScalaJSExample().main();", analytics = true)
-              }
-            } ~
-            path("complete" / Segment / IntNumber){
-              completeStuff
             }
           }
         }
       }
     }
   }
+  def compile(txt: String) = compileStuff(txt, _ |> Compiler.export)
+  def fastOpt(txt: String) = compileStuff(txt, _ |> Compiler.fastOpt |> Compiler.export)
+  def fullOpt(txt: String) = compileStuff(txt, _ |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export)
+  def export(compiled: String, source: String) = {
+    renderCode(compiled, Nil, source, "Page().exportMain(); ScalaJSExample().main();", analytics = false)
+  }
+  def `import`(compiled: String, source: String) = {
+    renderCode(compiled, clientFiles, source, "Client().importMain(); ScalaJSExample().main();", analytics = true)
+  }
   def renderCode(compiled: String, srcFiles: Seq[String], source: String, bootFunc: String, analytics: Boolean) = {
-
-    complete{
-      HttpEntity(
-        MediaTypes.`text/html`,
-        Static.page(bootFunc, srcFiles, source, compiled, analytics)
-      )
-    }
+    Static.page(bootFunc, srcFiles, source, compiled, analytics)
   }
 
-  def completeStuff(flag: String, offset: Int)(ctx: RequestContext): Unit = {
-//    setSecurityManager
-    for(res <- Compiler.autocomplete(ctx.request.entity.asString, flag, offset)){
-      val response = write(res)
-      println(s"got autocomplete: sending $response")
-      ctx.responder ! HttpResponse(
-        entity=response.toString(),
-        headers=List(
-          `Access-Control-Allow-Origin`(spray.http.AllOrigins)
-        )
-      )
-    }
+  def completeStuff(txt: String, flag: String, offset: Int): List[(String, String)] = {
+    Await.result(Compiler.autocomplete(txt, flag, offset), 100.seconds)
   }
 
-  def compileStuff(ctx: RequestContext, processor: PartialIRClasspath => String): Unit = {
+  def compileStuff(code: String, processor: PartialIRClasspath => String) = {
 
     val output = mutable.Buffer.empty[String]
 
     val res = Compiler.compile(
-      ctx.request.entity.data.toByteArray,
+      code.getBytes,
       output.append(_)
     )
 
-    val returned = res match {
-      case None =>
-        Json.write(Js.Object(Seq(
-          "success" -> writeJs(false),
-          "logspam" -> writeJs(output.mkString)
-        )))
-
-      case Some(files) =>
-        val code = processor(files)
-
-        Json.write(Js.Object(Seq(
-          "success" -> writeJs(true),
-          "logspam" -> writeJs(output.mkString),
-          "code" -> writeJs(code)
-        )))
-    }
-
-    ctx.responder ! HttpResponse(
-      entity=returned.toString,
-      headers=List(
-        `Access-Control-Allow-Origin`(spray.http.AllOrigins)
-      )
-    )
+    (output.mkString, res.map(processor))
   }
 }

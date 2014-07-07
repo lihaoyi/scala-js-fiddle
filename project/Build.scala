@@ -44,7 +44,8 @@ object Build extends sbt.Build{
         "com.lihaoyi" %%% "upickle" % "0.1.4",
         "com.lihaoyi" %%% "autowire" % "0.1.0",
         "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
-        "com.lihaoyi" %% "acyclic" % "0.1.2" % "provided"
+        "com.lihaoyi" %% "acyclic" % "0.1.2" % "provided",
+        "com.lihaoyi" %%% "autowire" % "0.1.0"
       ),
       (SbtStartScript.stage in Compile) := (fullOptJS in Compile).value,
       relativeSourceMaps := true,
@@ -69,7 +70,6 @@ object Build extends sbt.Build{
       resolvers += Resolver.sonatypeRepo("snapshots"),
       libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-//        "org.scalamacros" %% "quasiquotes" % "2.0.0",
         "org.scala-lang.modules.scalajs" %%% "scalajs-dom" % "0.6",
         "com.scalatags" %%% "scalatags" % "0.3.8",
         "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
@@ -90,11 +90,11 @@ object Build extends sbt.Build{
       libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-compiler" % scalaVersion.value,
         "com.typesafe.akka" %% "akka-actor" % "2.3.2",
-        "io.spray" % "spray-can" % "1.3.1",
-        "io.spray" % "spray-client" % "1.3.1",
-        "io.spray" % "spray-caching" % "1.3.1",
-        "io.spray" % "spray-httpx" % "1.3.1",
-        "io.spray" % "spray-routing" % "1.3.1",
+        "io.spray" %% "spray-can" % "1.3.1",
+        "io.spray" %% "spray-client" % "1.3.1",
+        "io.spray" %% "spray-caching" % "1.3.1",
+        "io.spray" %% "spray-httpx" % "1.3.1",
+        "io.spray" %% "spray-routing" % "1.3.1",
         "org.scala-lang.modules.scalajs" % s"scalajs-compiler_${scalaVersion.value}" % "0.5.0",
         "org.scala-lang.modules.scalajs" %% "scalajs-tools" % "0.5.0",
         "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",

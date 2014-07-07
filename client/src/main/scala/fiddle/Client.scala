@@ -13,7 +13,8 @@ import Page._
 import JsVal.jsVal2jsAny
 import Client.RedLogger
 import scala.Some
-
+import autowire.Request
+import upickle.Implicits._
 @JSExport
 object Checker{
   /**
@@ -53,10 +54,23 @@ object Checker{
   }
 }
 
+object Post extends autowire.Handler[Web]{
+
+  override def callRequest(req: Request): Future[String] = {
+    val url = "/api/" + req.path.mkString("/")
+    logln("Calling " + url)
+    dom.extensions.Ajax.post(
+      url = Shared.url + url,
+      data = upickle.write(req.args)
+    ).map(_.responseText)
+  }
+}
+
 class Client(){
 
+
   Client.scheduleResets()
-  val command = Channel[(String, String)]()
+  val command = Channel[Future[(String, Option[String])]]()
 
   def exec(s: String) = {
     Client.clear()
@@ -75,64 +89,55 @@ class Client(){
   val instrument = "c"
 
   val compilationLoop = task*async{
-    val (code, cmd) = await(command())
-    await(compile(code, cmd)).foreach(exec)
+    val future = await(command())
+    await(compile(future)).foreach(exec)
 
     while(true){
-      val (code, cmd) = await(command())
+      val future = await(command())
 
-      val compiled = await(compile(code, cmd))
+      val compiled = await(compile(future))
       compiled.foreach(exec)
     }
   }
 
   val editor: Editor = new Editor(Seq(
-    ("Compile", "Enter", () => command.update((editor.code, "/fastOpt"))),
-    ("FullOptimize", "Shift-Enter", () => command.update((editor.code, "/fullOpt"))),
+    ("Compile", "Enter", () => command.update(Post[Api](_.fastOpt(editor.code)))),
+    ("FullOptimize", "Shift-Enter", () => command.update(Post[Api](_.fullOpt(editor.code)))),
     ("Save", "S", save _),
     ("Complete", "Space", () => editor.complete()),
-    ("FastOptimizeJavascript", "J", () => viewJavascript(s"/compile")),
-    ("FullOptimizedJavascript", "Shift-J", () => viewJavascript(s"/fullOpt")),
+    ("FastOptimizeJavascript", "J", () => showJavascript(Post[Api](_.compile(editor.code)))),
+    ("FullOptimizedJavascript", "Shift-J", () => showJavascript(Post[Api](_.fullOpt(editor.code)))),
     ("Export", "E", export _)
   ), complete, RedLogger)
 
   logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-Space"), " for autocomplete.")
   logln("- Go to ", a(href:=fiddle.Shared.url, fiddle.Shared.url), " to find out more.")
 
-  def compile(code: String, endpoint: String): Future[Option[String]] = {
-    if (code == "") Future(None)
-    else {
-      log(s"Compiling with $endpoint... ")
-      Ajax.post(endpoint, code).map { res =>
-        import upickle.{Js, Json}
-        val js = Json.read(res.responseText)
+  def compile(res: Future[(String, Option[String])]): Future[Option[String]] = {
+    res.map { case (logspam, result) =>
 
-        if (js("logspam") != Js.String("")) {
-          logln(js("logspam").value.toString)
-        }
-        if (js("success") == Js.True) {
+
+      logln(logspam)
+      result match{
+        case Some(c) =>
           log(green("Success"))
           logln()
-          Some(js("code").value.toString)
-        } else {
+        case None =>
           log(red("Failure"))
           logln()
-          None
-        }
-
-      }.recover{case e: Exception =>
-        Client.logError(e.getStackTraceString)
-        Client.logError(e.toString)
-        None
       }
-
+      result
+    }.recover { case e: Exception =>
+      Client.logError(e.getStackTraceString)
+      Client.logError(e.toString)
+      None
     }
   }
 
-  def viewJavascript(endpoint: String) = task*async {
-    await(compile(editor.code, endpoint)).foreach{ compiled  =>
+  def showJavascript(compiled: Future[(String, Option[String])]) = {
+    compiled.collect{ case (logspam, Some(code)) =>
       Client.clear()
-      Page.output.innerHTML = Page.highlight(compiled , "ace/mode/javascript")
+      Page.output.innerHTML = Page.highlight(code, "ace/mode/javascript")
     }
   }
 
@@ -149,19 +154,15 @@ class Client(){
     val flag = if(code.take(intOffset).endsWith(".")) "member" else "scope"
 
 
-    val xhr = await(Ajax.post(s"/complete/$flag/$intOffset", code))
+    val res = await(Post[Api](_.completeStuff(code, flag, intOffset)))
     log("Done")
     logln()
-    js.JSON
-      .parse(xhr.responseText)
-      .asInstanceOf[js.Array[js.Array[String]]]
-      .toSeq
-      .map(_.toSeq)
+    res
   }
 
   def export(): Unit = task*async {
     logln("Exporting...")
-    await(compile(editor.code, "/fullOpt")).foreach{ code =>
+    await(compile(Post[Api](_.fullOpt(editor.code)))).foreach{ code =>
       Util.Form.post("/export",
         "source" -> editor.code,
         "compiled" -> code
@@ -170,7 +171,7 @@ class Client(){
   }
 
   def save(): Unit = task*async{
-    await(compile(editor.code, "/fullOpt"))
+    await(compile(Post[Api](_.fullOpt(editor.code))))
     val data = JsVal.obj(
       "description" -> "Scala.jsFiddle gist",
       "public" -> true,
@@ -227,14 +228,14 @@ object Client{
     val src = await(load(gistId, fileName))
     val client = new Client()
     client.editor.sess.setValue(src)
-    client.command.update((src, "/fullOpt"))
+
+    client.command.update(Post[Api](_.fullOpt(src)))
   }
 
   @JSExport
   def importMain(): Unit = {
     clear()
     val client = new Client()
-    client.command.update(("", "/fastOpt"))
   }
 
   def load(gistId: String, file: Option[String]): Future[String] = {
