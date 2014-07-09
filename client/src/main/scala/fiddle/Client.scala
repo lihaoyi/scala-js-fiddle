@@ -54,7 +54,7 @@ object Checker{
   }
 }
 
-object Post extends autowire.Handler[Web]{
+object Post extends autowire.Client[Web]{
 
   override def callRequest(req: Request): Future[String] = {
     val url = "/api/" + req.path.mkString("/")
