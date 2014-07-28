@@ -48,7 +48,7 @@ object Classpath {
 
     val bootFiles = for {
       prop <- Seq(/*"java.class.path", */"sun.boot.class.path")
-      path <- System.getProperty(prop).split(":")
+      path <- System.getProperty(prop).split(System.getProperty("path.separator"))
       vfile = scala.reflect.io.File(path)
       if vfile.exists && !vfile.isDirectory
     } yield {
