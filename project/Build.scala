@@ -100,7 +100,7 @@ object Build extends sbt.Build{
         "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
         "com.scalatags" %% "scalatags" % "0.3.8",
         "com.lihaoyi" %% "acyclic" % "0.1.2" % "provided",
-        "org.webjars" % "ace" % "07.31.2013",
+        "org.webjars" % "ace" % "01.08.2014",
         "org.webjars" % "jquery" % "2.1.0-2",
         "org.webjars" % "normalize.css" % "2.1.3",
         "com.lihaoyi" %% "upickle" % "0.1.4",
