@@ -4,11 +4,11 @@ import scalatags.Text.all._
 import scalatags.Text.tags2
 object Static{
   val aceFiles = Seq(
-    "/META-INF/resources/webjars/ace/07.31.2013/src-min/ace.js",
-    "/META-INF/resources/webjars/ace/07.31.2013/src-min/ext-language_tools.js",
-    "/META-INF/resources/webjars/ace/07.31.2013/src-min/ext-static_highlight.js",
-    "/META-INF/resources/webjars/ace/07.31.2013/src-min/mode-scala.js",
-    "/META-INF/resources/webjars/ace/07.31.2013/src-min/theme-twilight.js"
+    "/META-INF/resources/webjars/ace/01.08.2014/src-min/ace.js",
+    "/META-INF/resources/webjars/ace/01.08.2014/src-min/ext-language_tools.js",
+    "/META-INF/resources/webjars/ace/01.08.2014/src-min/ext-static_highlight.js",
+    "/META-INF/resources/webjars/ace/01.08.2014/src-min/mode-scala.js",
+    "/META-INF/resources/webjars/ace/01.08.2014/src-min/theme-twilight.js"
   )
 
   def page(arg: String, srcFiles: Seq[String], source: String = "", compiled: String = "", analytics: Boolean = true) =
