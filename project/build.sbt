@@ -10,7 +10,7 @@ resolvers += "typesafe" at "http://repo.typesafe.com/typesafe/releases/"
 
 addSbtPlugin("org.scala-lang.modules.scalajs" % "scalajs-sbt-plugin" % "0.5.0")
 
-addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "0.7.4")
+addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.10.0")
 
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.7.1")
 
