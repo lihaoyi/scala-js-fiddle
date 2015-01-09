@@ -32,11 +32,6 @@ object Server extends SimpleRoutingApp with Api{
 
     val simpleCache = routeCache(maxCapacity = 1000)
     println("Power On Self Test")
-    val res = Compiler.compile(fiddle.Shared.default.getBytes, println)
-    val optimized = res.get |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export
-    assert(optimized.contains("Looks like"))
-    println("Power On Self Test complete: " + optimized.length + " bytes")
-
 
     startServer("0.0.0.0", port = 8080) {
       cache(simpleCache) {
@@ -82,6 +77,11 @@ object Server extends SimpleRoutingApp with Api{
         }
       }
     }
+
+    val res = Compiler.compile(fiddle.Shared.default.getBytes, println)
+    val optimized = res.get |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export
+    assert(optimized.contains("Looks like"))
+    println("Power On Self Test complete: " + optimized.length + " bytes")
   }
   def compile(txt: String) = compileStuff(txt, _ |> Compiler.export)
   def fastOpt(txt: String) = compileStuff(txt, _ |> Compiler.fastOpt |> Compiler.export)

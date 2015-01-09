@@ -2,7 +2,6 @@ import sbt._
 import Keys._
 import scala.scalajs.sbtplugin.ScalaJSPlugin._
 import ScalaJSKeys._
-import com.typesafe.sbt.SbtStartScript
 import sbtassembly.Plugin._
 import AssemblyKeys._
 import spray.revolver.RevolverPlugin._
@@ -14,9 +13,7 @@ object Build extends sbt.Build{
     .settings(assemblySettings:_*)
     .settings(
       bootSnippet := "",
-      SbtStartScript.stage in Compile := Unit,
       (assembly in Compile) := {
-        (SbtStartScript.stage in Compile).value
         (assembly in (server, Compile)).value
       },
       (resources in (server, Compile)) ++= {
@@ -47,7 +44,6 @@ object Build extends sbt.Build{
         "com.lihaoyi" %% "acyclic" % "0.1.2" % "provided",
         "com.lihaoyi" %%% "autowire" % "0.1.0"
       ),
-      (SbtStartScript.stage in Compile) := (fullOptJS in Compile).value,
       relativeSourceMaps := true,
       addCompilerPlugin("com.lihaoyi" %% "acyclic" % "0.1.2"),
       autoCompilerPlugins := true,
@@ -82,7 +78,7 @@ object Build extends sbt.Build{
 
   lazy val server = project
     .dependsOn(shared)
-    .settings(assemblySettings ++ Revolver.settings ++ SbtStartScript.startScriptForClassesSettings:_*)
+    .settings(assemblySettings ++ Revolver.settings ++ com.typesafe.sbt.SbtNativePackager.packageArchetype.java_application:_*)
     .settings(
       resolvers += Resolver.url("scala-js-releases",
         url("http://dl.bintray.com/content/scala-js/scala-js-releases"))(
