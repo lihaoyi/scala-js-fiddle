@@ -24,7 +24,7 @@ object Shared{
 
   val gistId = "9443f8e0ecc68d1058ad"
 
-  val url = "http://localhost:8080"
+  val url = "https://www.scala-js-fiddle.com/"
 }
 
 class Web extends ClassfileAnnotation
