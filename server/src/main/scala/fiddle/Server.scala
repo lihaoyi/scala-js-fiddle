@@ -19,6 +19,7 @@ import scala.scalajs.tools.classpath.PartialIRClasspath
 import scala.annotation.{ClassfileAnnotation, StaticAnnotation, Annotation}
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.util.Properties
 
 object Server extends SimpleRoutingApp with Api{
   implicit val system = ActorSystem()
@@ -37,8 +38,8 @@ object Server extends SimpleRoutingApp with Api{
 //    assert(optimized.contains("Looks like"))
 //    println("Power On Self Test complete: " + optimized.length + " bytes")
 
-
-    startServer("0.0.0.0", port = 8080) {
+    val p = Properties.envOrElse("PORT", "8080").toInt
+    startServer("0.0.0.0", port = p) {
       cache(simpleCache) {
         encodeResponse(Gzip) {
           get {
