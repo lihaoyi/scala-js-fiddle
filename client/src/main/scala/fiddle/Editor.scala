@@ -18,11 +18,11 @@ class Editor(bindings: Seq[(String, String, () => Any)],
   def sess = editor.getSession()
   def aceDoc = sess.getDocument()
   def code = sess.getValue().asInstanceOf[String]
-  def row = editor.getCursorPosition().row.asInstanceOf[js.Number].toInt
-  def column= editor.getCursorPosition().column.asInstanceOf[js.Number].toInt
+  def row = editor.getCursorPosition().row.asInstanceOf[Int]
+  def column= editor.getCursorPosition().column.asInstanceOf[Int]
 
   def complete() = {
-    if (!editor.completer)
+    if (!js.DynamicImplicits.truthValue(editor.completer))
       editor.completer = js.Dynamic.newInstance(Autocomplete)()
     js.Dynamic.global.window.ed = editor
     editor.completer.showPopup(editor)

@@ -14,8 +14,7 @@ import scala.Some
 import spray.http.HttpResponse
 import spray.routing._
 import upickle._
-import upickle.Implicits._
-import scala.scalajs.tools.classpath.PartialIRClasspath
+import org.scalajs.core.tools.classpath.PartialClasspath
 import scala.annotation.{ClassfileAnnotation, StaticAnnotation, Annotation}
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -25,6 +24,14 @@ object Server extends SimpleRoutingApp with Api{
   import system.dispatcher
   val clientFiles = Seq("/client-fastopt.js")
 
+  private object AutowireServer
+      extends autowire.Server[String, upickle.Reader, upickle.Writer] {
+    def write[Result: Writer](r: Result) = upickle.write(r)
+    def read[Result: Reader](p: String) = upickle.read[Result](p)
+
+    val routes = AutowireServer.route[Api](Server)
+  }
+
   def main(args: Array[String]): Unit = {
     implicit val Default: CacheKeyer = CacheKeyer {
       case RequestContext(HttpRequest(_, uri, _, entity, _), _, _) => (uri, entity)
@@ -33,7 +40,7 @@ object Server extends SimpleRoutingApp with Api{
     val simpleCache = routeCache(maxCapacity = 1000)
     println("Power On Self Test")
     val res = Compiler.compile(fiddle.Shared.default.getBytes, println)
-    val optimized = res.get |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export
+    val optimized = res.get |> Compiler.fullOpt |> Compiler.export
     assert(optimized.contains("Looks like"))
     println("Power On Self Test complete: " + optimized.length + " bytes")
 
@@ -72,8 +79,8 @@ object Server extends SimpleRoutingApp with Api{
             path("api" / Segments){ s =>
               extract(_.request.entity.asString) { e =>
                 complete {
-                  autowire.Macros.route[Web](Server)(
-                    autowire.Request(s, upickle.read[Map[String, String]](e))
+                  AutowireServer.routes(
+                    autowire.Core.Request(s, upickle.read[Map[String, String]](e))
                   )
                 }
               }
@@ -83,9 +90,8 @@ object Server extends SimpleRoutingApp with Api{
       }
     }
   }
-  def compile(txt: String) = compileStuff(txt, _ |> Compiler.export)
   def fastOpt(txt: String) = compileStuff(txt, _ |> Compiler.fastOpt |> Compiler.export)
-  def fullOpt(txt: String) = compileStuff(txt, _ |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export)
+  def fullOpt(txt: String) = compileStuff(txt, _ |> Compiler.fullOpt |> Compiler.export)
   def export(compiled: String, source: String) = {
     renderCode(compiled, Nil, source, "Page().exportMain(); ScalaJSExample().main();", analytics = false)
   }
@@ -100,7 +106,7 @@ object Server extends SimpleRoutingApp with Api{
     Await.result(Compiler.autocomplete(txt, flag, offset), 100.seconds)
   }
 
-  def compileStuff(code: String, processor: PartialIRClasspath => String) = {
+  def compileStuff(code: String, processor: PartialClasspath => String) = {
 
     val output = mutable.Buffer.empty[String]
 

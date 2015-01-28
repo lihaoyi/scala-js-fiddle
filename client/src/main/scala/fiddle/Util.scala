@@ -2,6 +2,7 @@ package fiddle
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
+import js.JSConverters._
 
 case class Channel[T](){
   private[this] var value: Promise[T] = null
@@ -27,12 +28,12 @@ class JsVal(val value: js.Dynamic){
   def keys: Seq[String] = js.Object.keys(value.asInstanceOf[js.Object]).toSeq.map(x => x: String)
   def values: Seq[JsVal] = keys.toSeq.map(x => JsVal(value.selectDynamic(x)))
 
-  def isDefined: Boolean = !(value: js.Any).isInstanceOf[js.Undefined]
+  def isDefined: Boolean = !js.isUndefined(value)
   def isNull: Boolean = value eq null
 
-  def asDouble: Double = value.asInstanceOf[js.Number]
-  def asBoolean: Boolean = value.asInstanceOf[js.Boolean]
-  def asString: String = value.asInstanceOf[js.String]
+  def asDouble: Double = value.asInstanceOf[Double]
+  def asBoolean: Boolean = value.asInstanceOf[Boolean]
+  def asString: String = value.asInstanceOf[String]
 
   override def toString(): String = js.JSON.stringify(value)
 }
@@ -51,7 +52,7 @@ object JsVal {
     new JsVal(obj)
   }
   def arr(values: js.Any*) = {
-    new JsVal((values.toArray[js.Any]: js.Array[js.Any]).asInstanceOf[js.Dynamic])
+    new JsVal(values.toJSArray.asInstanceOf[js.Dynamic])
   }
 }
 
