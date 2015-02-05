@@ -16,9 +16,9 @@ object Page{
   val fiddleUrl = Shared.url
   val fiddleGistId = Shared.gistId
 
-  def red = span(color:="#ffaaaa")
-  def blue = span(color:="#aaaaff")
-  def green = span(color:="#aaffaa")
+  def red = span(color:="#E95065")
+  def blue = span(color:="#46BDDF")
+  def green = span(color:="#52D273")
 
 
   def sandbox = Util.getElem[html.Div]("sandbox")
@@ -41,6 +41,10 @@ object Page{
     output.innerHTML = ""
     canvas.height = sandbox.clientHeight
     canvas.width = sandbox.clientWidth
+    val tmp = renderer.fillStyle
+    renderer.fillStyle = "rgb(20, 20, 20)"
+    renderer.clearRect(0, 0, 10000, 10000)
+    renderer.fillStyle = tmp
   }
 
   def scroll(px: Int) = {

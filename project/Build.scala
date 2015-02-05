@@ -1,30 +1,23 @@
+import com.typesafe.sbt.SbtNativePackager
 import sbt._
 import Keys._
 import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
-import com.typesafe.sbt.SbtStartScript
-import sbtassembly.Plugin._
-import AssemblyKeys._
+import com.typesafe.sbt.SbtNativePackager._
+import NativePackagerKeys._
 import spray.revolver.RevolverPlugin._
-import com.lihaoyi.workbench.Plugin._
+
 object Build extends sbt.Build{
 
   lazy val root = project.in(file("."))
     .aggregate(client, page, server, runtime)
-    .settings(assemblySettings:_*)
     .settings(
-      bootSnippet := "",
-      SbtStartScript.stage in Compile := Unit,
-      (assembly in Compile) := {
-        (SbtStartScript.stage in Compile).value
-        (assembly in (server, Compile)).value
-      },
       (resources in (server, Compile)) ++= {
         (managedClasspath in (runtime, Compile)).value.map(_.data) ++ Seq(
           (packageBin in (runtime, Compile)).value,
           (packageBin in (page, Compile)).value,
           (packageBin in (shared, Compile)).value,
-          (fastOptJS in (client, Compile)).value.data
+          (fullOptJS in (client, Compile)).value.data
         )
       },
       scalaVersion := "2.11.5"
@@ -45,7 +38,6 @@ object Build extends sbt.Build{
         "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
         "com.lihaoyi" %% "acyclic" % "0.1.2" % "provided"
       ),
-      (SbtStartScript.stage in Compile) := (fullOptJS in Compile).value,
       relativeSourceMaps := true,
       addCompilerPlugin("com.lihaoyi" %% "acyclic" % "0.1.2"),
       autoCompilerPlugins := true,
@@ -70,9 +62,9 @@ object Build extends sbt.Build{
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
         "org.scala-js" %%% "scalajs-dom" % "0.8.0",
         "com.lihaoyi" %%% "scalatags" % "0.4.5",
-        "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
+        "org.scala-lang.modules" %% "scala-async" % "0.9.1",
         "com.lihaoyi" %%% "scalarx" % "0.2.7",
-        "com.nativelibs4java" %% "scalaxy-loops" % "0.1.1" % "provided"
+        "com.nativelibs4java" %% "scalaxy-loops" % "0.1.1"
       ),
       autoCompilerPlugins := true,
       scalaVersion := "2.11.5"
@@ -80,7 +72,8 @@ object Build extends sbt.Build{
 
   lazy val server = project
     .dependsOn(shared)
-    .settings(assemblySettings ++ Revolver.settings ++ SbtStartScript.startScriptForClassesSettings:_*)
+    .settings(packageArchetype.java_server:_*)
+    .settings(Revolver.settings:_*)
     .settings(
       libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-compiler" % scalaVersion.value,

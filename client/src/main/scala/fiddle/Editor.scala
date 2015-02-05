@@ -70,6 +70,7 @@ object Editor{
     val editor = global.ace.edit(id)
     editor.setTheme("ace/theme/twilight")
     editor.renderer.setShowGutter(false)
+    editor.setShowPrintMargin(false)
     editor
   }
   lazy val initEditor: js.Dynamic = {

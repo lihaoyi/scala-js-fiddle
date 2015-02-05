@@ -23,7 +23,7 @@ import scala.util.Properties
 object Server extends SimpleRoutingApp with Api{
   implicit val system = ActorSystem()
   import system.dispatcher
-  val clientFiles = Seq("/client-fastopt.js")
+  val clientFiles = Seq("/client-opt.js")
 
   private object AutowireServer
       extends autowire.Server[String, upickle.Reader, upickle.Writer] {
@@ -38,7 +38,7 @@ object Server extends SimpleRoutingApp with Api{
       case RequestContext(HttpRequest(_, uri, _, entity, _), _, _) => (uri, entity)
     }
 
-    val simpleCache = routeCache(maxCapacity = 1000)
+    val simpleCache = routeCache()
 //    println("Power On Self Test")
 //    val res = Compiler.compile(fiddle.Shared.default.getBytes, println)
 //    val optimized = res.get |> Compiler.fullOpt |> Compiler.export

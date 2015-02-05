@@ -29,7 +29,8 @@
     bottom: 20%;
     left: 50%;
     right: 0;
-    background-color: black;
+    background-color: rgb(20, 20, 20);
+    border-left: 3px solid #333333;
 }
 #output{
     position: absolute;
@@ -41,17 +42,17 @@
 body, pre {
     overflow: hidden;
     background-color: #222222;
-    color: #eeeeee;
+    color: #B3B8BC;
     font-size: 12px;
     font-family: Monaco, Menlo, 'Ubuntu Mono', Consolas, source-code-pro, monospace;
 }
 
 a:link{
-    color:#aaffff;
+    color:#E5C453;
 }
 
 a:visited{
-    color:#ffaaff;
+    color:#E57255;
 }
 
 html, body, #spinner-holder{
