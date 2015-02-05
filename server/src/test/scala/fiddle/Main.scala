@@ -96,7 +96,7 @@ object Main extends TestSuite{
             "omg"
           }
         }
-        """) |> Compiler.fastOpt |> Compiler.fullOpt |> Compiler.export
+        """) |> Compiler.fullOpt |> Compiler.export
         for(s <- Seq("Main", "Hello World", "main")){
           assert(res.contains(s))
         }

@@ -5,8 +5,8 @@ import scala.reflect.io.{VirtualDirectory, Streamable}
 import java.util.zip.ZipInputStream
 import java.io._
 
-import scala.scalajs.tools.classpath.builder.{AbstractJarLibClasspathBuilder, PartialClasspathBuilder, JarTraverser}
-import scala.scalajs.tools.io._
+import org.scalajs.core.tools.classpath.builder.{AbstractJarLibClasspathBuilder, PartialClasspathBuilder, JarTraverser}
+import org.scalajs.core.tools.io._
 import scala.collection.immutable.Traversable
 import scala.util.Random
 
@@ -25,17 +25,17 @@ object Classpath {
     println("Loading files...")
     val jarFiles = for {
       name <- Seq(
-        "/scala-library-2.11.1.jar",
-        "/scala-reflect-2.11.1.jar",
-        "/scalajs-library_2.11-0.5.0.jar",
-        "/scalajs-dom_sjs0.5_2.11-0.6.jar",
-        "/scalatags_sjs0.5_2.11-0.3.8.jar",
-        "/scalarx_sjs0.5_2.11-0.2.5.jar",
+        "/scala-library-2.11.5.jar",
+        "/scala-reflect-2.11.5.jar",
+        "/scalajs-library_2.11-0.6.0-RC2.jar",
+        "/scalajs-dom_sjs0.6.0-RC1_2.11-0.7.0.jar",
+        "/scalatags_sjs0.6.0-RC1_2.11-0.4.3-RC1.jar",
+        "/scalarx_sjs0.6.0-RC1_2.11-0.2.7-RC1.jar",
         "/scala-async_2.11-0.9.1.jar",
         "/scalaxy-loops_2.11-0.1.1.jar",
-        "/runtime_sjs0.5_2.11-0.1-SNAPSHOT.jar",
-        "/page_sjs0.5_2.11-0.1-SNAPSHOT.jar",
-        "/shared_sjs0.5_2.11-0.1-SNAPSHOT.jar"
+        "/runtime_sjs0.6.0-RC1_2.11-0.1-SNAPSHOT.jar",
+        "/page_sjs0.6.0-RC1_2.11-0.1-SNAPSHOT.jar",
+        "/shared_sjs0.6.0-RC1_2.11-0.1-SNAPSHOT.jar"
       )
     } yield {
       val stream = getClass.getResourceAsStream(name)
@@ -92,6 +92,7 @@ object Classpath {
   lazy val scalajs = {
     println("Loading scalaJSClassPath")
     class Builder extends AbstractJarLibClasspathBuilder{
+      val DummyVersion = "DUMMY_FILE"
       def listFiles(d: File) = Nil
       def toJSFile(f: File) = {
         val file = new MemVirtualJSFile(f._1)
@@ -109,6 +110,7 @@ object Classpath {
       def isFile(f: File) = true
       def isJSFile(f: File) = f._1.endsWith(".js")
       def isJARFile(f: File) = f._1.endsWith(".jar")
+      def exists(f: File) = true
       def getName(f: File) = f._1
       def isIRFile(f: File) = f._1.endsWith(".sjsir")
       def getVersion(f: File) = Random.nextInt().toString
