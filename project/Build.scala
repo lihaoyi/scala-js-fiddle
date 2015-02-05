@@ -37,7 +37,7 @@ object Build extends sbt.Build{
     .enablePlugins(ScalaJSPlugin)
     .settings(
       libraryDependencies ++= Seq(
-        "org.scala-js" %%% "scalajs-dom" % "0.7.0",
+        "org.scala-js" %%% "scalajs-dom" % "0.8.0",
         "com.lihaoyi" %%% "scalatags" % "0.4.5",
         "com.lihaoyi" %%% "scalarx" % "0.2.7",
         "com.lihaoyi" %%% "upickle" % "0.2.6",
@@ -68,7 +68,7 @@ object Build extends sbt.Build{
       resolvers += Resolver.sonatypeRepo("snapshots"),
       libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-        "org.scala-js" %%% "scalajs-dom" % "0.7.0",
+        "org.scala-js" %%% "scalajs-dom" % "0.8.0",
         "com.lihaoyi" %%% "scalatags" % "0.4.5",
         "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
         "com.lihaoyi" %%% "scalarx" % "0.2.7",
@@ -106,7 +106,6 @@ object Build extends sbt.Build{
 
       resolvers += "Typesafe Repo" at "http://repo.typesafe.com/typesafe/releases/",
       testFrameworks += new TestFramework("utest.runner.Framework"),
-      javaOptions += "-XX:MaxPermSize=2g",
       javaOptions in Revolver.reStart += "-Xmx2g",
       addCompilerPlugin("com.lihaoyi" %% "acyclic" % "0.1.2"),
       autoCompilerPlugins := true,

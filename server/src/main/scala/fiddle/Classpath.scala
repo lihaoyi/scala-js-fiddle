@@ -27,15 +27,15 @@ object Classpath {
       name <- Seq(
         "/scala-library-2.11.5.jar",
         "/scala-reflect-2.11.5.jar",
-        "/scalajs-library_2.11-0.6.0-RC2.jar",
-        "/scalajs-dom_sjs0.6.0-RC1_2.11-0.7.0.jar",
-        "/scalatags_sjs0.6.0-RC1_2.11-0.4.3-RC1.jar",
-        "/scalarx_sjs0.6.0-RC1_2.11-0.2.7-RC1.jar",
+        "/scalajs-library_2.11-0.6.0.jar",
+        "/scalajs-dom_sjs0.6_2.11-0.8.0.jar",
+        "/scalatags_sjs0.6_2.11-0.4.5.jar",
+        "/scalarx_sjs0.6_2.11-0.2.7.jar",
         "/scala-async_2.11-0.9.1.jar",
         "/scalaxy-loops_2.11-0.1.1.jar",
-        "/runtime_sjs0.6.0-RC1_2.11-0.1-SNAPSHOT.jar",
-        "/page_sjs0.6.0-RC1_2.11-0.1-SNAPSHOT.jar",
-        "/shared_sjs0.6.0-RC1_2.11-0.1-SNAPSHOT.jar"
+        "/runtime_sjs0.6_2.11-0.1-SNAPSHOT.jar",
+        "/page_sjs0.6_2.11-0.1-SNAPSHOT.jar",
+        "/shared_sjs0.6_2.11-0.1-SNAPSHOT.jar"
       )
     } yield {
       val stream = getClass.getResourceAsStream(name)

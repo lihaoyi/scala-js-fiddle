@@ -111,7 +111,8 @@ class Client(){
   ), complete, RedLogger)
 
   logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-Space"), " for autocomplete.")
-  logln("- Go to ", a(href:=fiddle.Shared.url, fiddle.Shared.url), " to find out more.")
+  val landing = fiddle.Shared.url + "/gist/" + fiddle.Shared.gistId + "/LandingPage.scala"
+  logln("- Go to ", a(href:=landing, landing), " to find out more.")
 
   def compile(res: Future[(String, Option[String])]): Future[Option[String]] = {
     res.map { case (logspam, result) =>
@@ -220,7 +221,7 @@ object Client{
     dom.console.log("gistMain")
     Editor.initEditor
     val (gistId, fileName) = args.toSeq match{
-      case Nil => (fiddle.Shared.gistId, Some("LandingPage.scala"))
+      case Nil => (fiddle.Shared.gistId, Some("Oscilloscope.scala"))
       case Seq(g) => (g, None)
       case Seq(g, f) => (g, Some(f))
     }
