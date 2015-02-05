@@ -1,6 +1,7 @@
 package fiddle
 
 import org.scalajs.dom
+import dom.html
 import scala.concurrent.{Promise, Future}
 import scala.util.Try
 
@@ -47,7 +48,7 @@ object Util {
       ajax("get", path, args:_*)
     }
     def ajax(method: String, path: String, args: (String, String)*): Unit = {
-      val form = dom.document.createElement("form").asInstanceOf[dom.HTMLFormElement]
+      val form = dom.document.createElement("form").asInstanceOf[html.Form]
       form.setAttribute("method", method)
       form.setAttribute("action", path)
 

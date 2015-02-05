@@ -13,17 +13,16 @@ import concurrent.ExecutionContext.Implicits.global
 import scala.reflect.internal.util.{BatchSourceFile, OffsetPosition}
 import scala.tools.nsc.interactive.{InteractiveAnalyzer, Response}
 import scala.tools.nsc
-import scala.scalajs.tools.packager.ScalaJSPackager
 import scala.io.Source
-import scala.scalajs.tools.optimizer.{ScalaJSClosureOptimizer, ScalaJSOptimizer}
-import scala.scalajs.tools.io._
-import scala.scalajs.tools.logging.Level
+import org.scalajs.core.tools.optimizer.{ScalaJSClosureOptimizer, ScalaJSOptimizer}
+import org.scalajs.core.tools.io._
+import org.scalajs.core.tools.logging.Level
 
 import scala.tools.nsc.backend.JavaPlatform
 import scala.tools.nsc.util.ClassPath.JavaContext
 import scala.collection.mutable
 import scala.tools.nsc.typechecker.Analyzer
-import scala.scalajs.tools.classpath.{CompleteNCClasspath, CompleteCIClasspath, PartialIRClasspath, PartialClasspath}
+import org.scalajs.core.tools.classpath.{CompleteClasspath, LinkedClasspath, IRClasspath, PartialClasspath}
 import scala.Some
 
 /**
@@ -33,8 +32,10 @@ import scala.Some
 object Compiler{
   val blacklist = Seq("<init>")
 
+  val semantics = org.scalajs.core.tools.sem.Semantics.Defaults
+
   /**
-   * Converts Scalac's weird Future type 
+   * Converts Scalac's weird Future type
    * into a standard scala.concurrent.Future
    */
   def toFuture[T](func: Response[T] => Unit): Future[T] = {
@@ -82,7 +83,7 @@ object Compiler{
   trait InMemoryGlobal { g: scala.tools.nsc.Global =>
     def ctx: JavaContext
     def dirs: Vector[DirectoryClassPath]
-    override lazy val plugins = List[Plugin](new scala.scalajs.compiler.ScalaJSPlugin(this))
+    override lazy val plugins = List[Plugin](new org.scalajs.core.compiler.ScalaJSPlugin(this))
     override lazy val platform: ThisPlatform = new JavaPlatform{
       val global: g.type = g
       override def classPath = new JavaClassPath(dirs, ctx)
@@ -156,7 +157,7 @@ object Compiler{
     res
   }
 
-  def compile(src: Array[Byte], logger: String => Unit = _ => ()): Option[PartialIRClasspath] = {
+  def compile(src: Array[Byte], logger: String => Unit = _ => ()): Option[PartialClasspath] = {
 
     val singleFile = makeFile(Shared.prelude.getBytes ++ src)
 
@@ -185,7 +186,7 @@ object Compiler{
         f: VirtualScalaJSIRFile
       }
       Some(
-        new scala.scalajs.tools.classpath.PartialIRClasspath(
+        new org.scalajs.core.tools.classpath.PartialClasspath(
           Nil,
           Map.empty,
           things,
@@ -195,43 +196,36 @@ object Compiler{
 
     }
   }
-  def export(p: PartialIRClasspath) = {
-    (new ScalaJSPackager).packageCP(
-      p,
-      ScalaJSPackager.OutputConfig(WritableMemVirtualJSFile("")),
-      Compiler.Logger
-    ).scalaJSCode.map(_.content).mkString("\n\n")
-  }
-  def export(p: CompleteCIClasspath) = {
-    p.allCode.map(_.content).mkString("\n\n")
-  }
-  def export(p: CompleteNCClasspath) = {
+
+  def export(p: CompleteClasspath) = {
     p.allCode.map(_.content).mkString("\n\n")
   }
 
-  def fastOpt(userFiles: PartialIRClasspath): CompleteCIClasspath = {
-    new ScalaJSOptimizer().optimizeCP(
-      ScalaJSOptimizer.Inputs(Classpath.scalajs.merge(userFiles).resolve()),
-      ScalaJSOptimizer.OutputConfig(WritableMemVirtualJSFile("output.js")),
+  def fastOpt(userFiles: PartialClasspath): LinkedClasspath = {
+    new ScalaJSOptimizer(semantics).optimizeCP(
+      Classpath.scalajs.merge(userFiles).resolve(),
+      ScalaJSOptimizer.Config(WritableMemVirtualJSFile("output.js")),
       Logger
     )
   }
 
-  def fullOpt(userFiles: CompleteCIClasspath): CompleteNCClasspath = {
-    new ScalaJSClosureOptimizer().optimizeCP(
-      ScalaJSClosureOptimizer.Inputs(userFiles),
-      ScalaJSClosureOptimizer.OutputConfig(WritableMemVirtualJSFile("output.js")),
+  def fullOpt(userFiles: PartialClasspath): LinkedClasspath = {
+    val sems = semantics.optimized
+    new ScalaJSClosureOptimizer(sems).optimizeCP(
+      new ScalaJSOptimizer(sems),
+      Classpath.scalajs.merge(userFiles).resolve(),
+      ScalaJSClosureOptimizer.Config(WritableMemVirtualJSFile("output.js")),
       Logger
     )
   }
 
-  object Logger extends scala.scalajs.tools.logging.Logger {
+  object Logger extends org.scalajs.core.tools.logging.Logger {
     def log(level: Level, message: => String): Unit = println(message)
     def success(message: => String): Unit = println(message)
     def trace(t: => Throwable): Unit = t.printStackTrace()
   }
 
-  object IgnoreLogger extends scala.scalajs.tools.logging.Logger {
+  object IgnoreLogger extends org.scalajs.core.tools.logging.Logger {
     def log(level: Level, message: => String): Unit = ()
     def success(message: => String): Unit = ()
     def trace(t: => Throwable): Unit = ()

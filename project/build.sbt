@@ -1,14 +1,6 @@
-resolvers += Resolver.url("scala-js-releases",
-  url("http://dl.bintray.com/content/scala-js/scala-js-releases"))(
-    Resolver.ivyStylePatterns)
-
-resolvers += Resolver.url("scala-js-snapshots",
-  url("http://repo.scala-js.org/repo/snapshots/"))(
-    Resolver.ivyStylePatterns)
-
 resolvers += "typesafe" at "http://repo.typesafe.com/typesafe/releases/"
 
-addSbtPlugin("org.scala-lang.modules.scalajs" % "scalajs-sbt-plugin" % "0.5.0")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.0")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-start-script" % "0.10.0")
 
