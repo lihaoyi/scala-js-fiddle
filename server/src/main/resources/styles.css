@@ -1,13 +1,13 @@
 #editor {
-    margin: 0;
+    margin: 10px;
     position: absolute;
     top: 0;
     bottom: 20%;
     left: 0;
     right: 50%;
-    background-color: rgb(20, 20, 20);
     box-sizing: border-box;
     padding-left: 3px;
+
 }
 #logspam{
     margin: 0;
@@ -16,7 +16,6 @@
     bottom: 0;
     left: 0;
     right: 0;
-    background-color: rgb(20, 20, 20);
     color: white;
     overflow: auto;
     box-sizing: border-box;
@@ -30,7 +29,6 @@
     bottom: 20%;
     left: 50%;
     right: 0;
-    background-color: rgb(20, 20, 20);
     border-left: 1px solid #333333;
 }
 #output{
@@ -42,7 +40,7 @@
 
 body, pre {
     overflow: hidden;
-    background-color: #222222;
+    background-color: rgb(20, 20, 20);
     color: #B3B8BC;
     font-size: 12px;
     font-family: Monaco, Menlo, 'Ubuntu Mono', Consolas, source-code-pro, monospace;
