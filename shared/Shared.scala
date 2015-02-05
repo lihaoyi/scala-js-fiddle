@@ -24,8 +24,8 @@ object Shared{
 
   val gistId = "9443f8e0ecc68d1058ad"
 
-//  val url = "http://www.scala-js-fiddle.com"
-  val url = "http://localhost:8080"
+  val url = "http://www.scala-js-fiddle.com"
+//  val url = "http://localhost:8080"
 }
 
 trait Api{
