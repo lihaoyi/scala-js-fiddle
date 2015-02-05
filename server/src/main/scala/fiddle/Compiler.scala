@@ -58,6 +58,7 @@ object Compiler{
     new ClassLoader(this.getClass.getClassLoader){
       val classCache = mutable.Map.empty[String, Option[Class[_]]]
       override def findClass(name: String): Class[_] = {
+        println("Looking for Class " + name)
         val fileName = name.replace('.', '/') + ".class"
         val res = classCache.getOrElseUpdate(
           name,
@@ -69,8 +70,12 @@ object Compiler{
           }
         )
         res match{
-          case None => throw new ClassNotFoundException()
-          case Some(cls) => cls
+          case None =>
+            println("Not Found Class " + name)
+            throw new ClassNotFoundException()
+          case Some(cls) =>
+            println("Found Class " + name)
+            cls
         }
       }
     }
@@ -128,7 +133,8 @@ object Compiler{
       override lazy val analyzer = new {
         val global: g.type = g
       } with InteractiveAnalyzer {
-        override def findMacroClassLoader() = inMemClassloader
+        val cl = inMemClassloader
+        override def findMacroClassLoader() = cl
       }
     }
 
@@ -168,7 +174,8 @@ object Compiler{
       override lazy val analyzer = new {
         val global: g.type = g
       } with Analyzer{
-        override def findMacroClassLoader() = inMemClassloader
+        val cl = inMemClassloader
+        override def findMacroClassLoader() = cl
       }
     }
 
