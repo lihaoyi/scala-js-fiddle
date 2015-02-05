@@ -1,3 +1,4 @@
+import com.heroku.sbt.HerokuPlugin
 import com.typesafe.sbt.SbtNativePackager
 import sbt._
 import Keys._
@@ -5,6 +6,7 @@ import org.scalajs.sbtplugin.ScalaJSPlugin
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import com.typesafe.sbt.SbtNativePackager._
 import NativePackagerKeys._
+import com.heroku.sbt.HerokuPlugin.autoImport._
 import spray.revolver.RevolverPlugin._
 
 object Build extends sbt.Build{
@@ -72,9 +74,11 @@ object Build extends sbt.Build{
 
   lazy val server = project
     .dependsOn(shared)
+    .enablePlugins(HerokuPlugin)
     .settings(packageArchetype.java_server:_*)
     .settings(Revolver.settings:_*)
     .settings(
+      herokuAppName in Compile := "scala-js-fiddle",
       libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-compiler" % scalaVersion.value,
         "com.typesafe.akka" %% "akka-actor" % "2.3.2",

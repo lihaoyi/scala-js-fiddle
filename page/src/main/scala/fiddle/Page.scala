@@ -19,7 +19,8 @@ object Page{
   def red = span(color:="#E95065")
   def blue = span(color:="#46BDDF")
   def green = span(color:="#52D273")
-
+  def yellow = span(color:="#E5C453")
+  def orange = span(color:="#E57255")
 
   def sandbox = Util.getElem[html.Div]("sandbox")
   def canvas = Util.getElem[html.Canvas]("canvas")

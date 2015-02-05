@@ -110,9 +110,9 @@ class Client(){
     ("Export", "E", export _)
   ), complete, RedLogger)
 
-  logln("- ", blue("Cmd/Ctrl-Enter"), " to compile & execute, ", blue("Cmd/Ctrl-Space"), " for autocomplete.")
+  logln("- ", yellow("Cmd/Ctrl-Enter"), " to compile & execute, ", yellow("Cmd/Ctrl-Space"), " for autocomplete.")
   val landing = fiddle.Shared.url + "/gist/" + fiddle.Shared.gistId + "/LandingPage.scala"
-  logln("- Go to ", a(href:=landing, landing), " to find out more.")
+  logln("- ", a(href:=landing, "Click here"), " to find out more.")
 
   def compile(res: Future[(String, Option[String])]): Future[Option[String]] = {
     res.map { case (logspam, result) =>

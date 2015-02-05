@@ -8,7 +8,7 @@ object Shared{
       |import scalatags.JsDom.all._
       |import org.scalajs.dom
       |import fiddle.Page
-      |import Page.{red, green, blue, println}
+      |import Page.{red, green, blue, yellow, orange, println}
       |import scalajs.js
     """.stripMargin
 

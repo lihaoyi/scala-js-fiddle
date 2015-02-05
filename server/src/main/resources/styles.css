@@ -16,11 +16,12 @@
     bottom: 0;
     left: 0;
     right: 0;
-    background-color: #222222;
+    background-color: rgb(20, 20, 20);
     color: white;
     overflow: auto;
     box-sizing: border-box;
     padding: 2px 4px;
+    border-top: 1px solid #333333;
 }
 #sandbox {
     margin: 0;
@@ -30,7 +31,7 @@
     left: 50%;
     right: 0;
     background-color: rgb(20, 20, 20);
-    border-left: 3px solid #333333;
+    border-left: 1px solid #333333;
 }
 #output{
     position: absolute;
@@ -48,7 +49,7 @@ body, pre {
 }
 
 a:link{
-    color:#E5C453;
+    color:#46BDDF;
 }
 
 a:visited{
