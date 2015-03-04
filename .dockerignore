@@ -1,0 +1,11 @@
+.ensime_lucene
+.idea
+.worksheet
+.settings
+bin
+.git
+target
+project/target
+project/project/target
+tmp
+Dockerfile
