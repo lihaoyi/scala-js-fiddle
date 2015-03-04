@@ -25,4 +25,9 @@ To package as a fat jar and run, or
 capstan build -p vmw; capstan run -p vmw
 ```
 
-To bundle as an image using OSv and run it under VMware.
+To bundle as an image using OSv and run it under VMware, or
+
+```
+docker build -t scala-js-fiddle . ; docker run -p 8080:8080 scala-js-fiddle:latest
+```
+To bundle as a Docker image and run it in a Docker container.
