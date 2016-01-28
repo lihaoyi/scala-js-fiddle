@@ -14,7 +14,7 @@ import scala.Some
 import spray.http.HttpResponse
 import spray.routing._
 import upickle._
-import org.scalajs.core.tools.classpath.PartialClasspath
+import org.scalajs.core.tools.io.VirtualScalaJSIRFile
 import scala.annotation.{ClassfileAnnotation, StaticAnnotation, Annotation}
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -107,7 +107,7 @@ object Server extends SimpleRoutingApp with Api{
     Await.result(Compiler.autocomplete(txt, flag, offset), 100.seconds)
   }
 
-  def compileStuff(code: String, processor: PartialClasspath => String) = {
+  def compileStuff(code: String, processor: Seq[VirtualScalaJSIRFile] => String) = {
 
     val output = mutable.Buffer.empty[String]
 
