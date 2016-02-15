@@ -27,7 +27,7 @@ object Classpath {
       name <- Seq(
         "/scala-library-2.11.7.jar",
         "/scala-reflect-2.11.7.jar",
-        "/scalajs-library_2.11-0.6.6.jar",
+        "/scalajs-library_2.11-0.6.7.jar",
         "/scalajs-dom_sjs0.6_2.11-0.8.2.jar",
         "/scalatags_sjs0.6_2.11-0.4.5.jar",
         "/scalarx_sjs0.6_2.11-0.2.7.jar",
