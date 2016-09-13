@@ -1,7 +1,12 @@
 Scala-Js-Fiddle
 ==============
 
-Source code for [www.scala-js-fiddle.com](http://www.scala-js-fiddle.com). To develop, run:
+Source code for [www.scala-js-fiddle.com](http://www.scala-js-fiddle.com).
+This is now obsolete, and has been super-seded by Otto Chrons' 
+[ScalaFiddle](https://github.com/scalafiddle).
+
+
+To develop, run:
 
 ```
 sbt "~; server/re-start"
