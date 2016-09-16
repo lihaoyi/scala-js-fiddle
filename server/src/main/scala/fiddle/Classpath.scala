@@ -9,34 +9,71 @@ import org.scalajs.core.tools.classpath.builder.{AbstractJarLibClasspathBuilder,
 import org.scalajs.core.tools.io._
 import scala.collection.immutable.Traversable
 import scala.util.Random
-
+import java.util.regex.Pattern
+import java.util.zip.ZipEntry
+import java.util.zip.ZipException
+import java.util.zip.ZipFile
+import scala.collection.JavaConversions._
 /**
  * Loads the jars that make up the classpath of the scala-js-fiddle
  * compiler and re-shapes it into the correct structure to satisfy
  * scala-compile and scalajs-tools
  */
 object Classpath {
+  def getResourcesFromPattern(pattern: Pattern): Seq[String] = {
+    val classPath = System.getProperty("java.class.path", ".")
+    classPath.split(":").flatMap(getResources(_, pattern))
+  }
+
+  def getResources(element: String, pattern: Pattern): Seq[String] = {
+    val file = new File(element)
+    if (file.isDirectory) {
+      getResourcesFromDirectory(file, pattern)
+    } else {
+      getResourcesFromJarFile(file, pattern)
+    }
+  }
+
+  def getResourcesFromJarFile(file: File, pattern: Pattern): Seq[String] = {
+    val zf = new ZipFile(file)
+    val it: Iterator[ZipEntry] = zf.entries()
+    val resources = it.map(_.getName).filter(pattern.matcher(_).matches).toList
+    zf.close()
+    resources
+  }
+
+  def getResourcesFromDirectory(directory: File, pattern: Pattern): Seq[String] = {
+    val fileList = directory.listFiles()
+    fileList.flatMap { file =>
+      if (file.isDirectory) {
+        getResourcesFromDirectory(file, pattern)
+      } else {
+        val fileName = file.getCanonicalPath
+        val accept = pattern.matcher(fileName).matches()
+        if (accept) {
+          List(fileName)
+        } else
+          List()
+      }
+    }
+  }
+
   /**
    * In memory cache of all the jars used in the compiler. This takes up some
    * memory but is better than reaching all over the filesystem every time we
    * want to do something.
    */
   lazy val loadedFiles = {
+    val allJars = getResourcesFromPattern(Pattern.compile(".*\\.jar"))
     println("Loading files...")
+    val excluded = List(
+        "scala-compiler",
+        "scala-parser-combinators",
+        "scala-xml",
+        "scalaxy-streams"
+    )
     val jarFiles = for {
-      name <- Seq(
-        "/scala-library-2.11.5.jar",
-        "/scala-reflect-2.11.5.jar",
-        "/scalajs-library_2.11-0.6.0.jar",
-        "/scalajs-dom_sjs0.6_2.11-0.8.0.jar",
-        "/scalatags_sjs0.6_2.11-0.4.5.jar",
-        "/scalarx_sjs0.6_2.11-0.2.7.jar",
-        "/scala-async_2.11-0.9.1.jar",
-        "/scalaxy-loops_2.11-0.1.1.jar",
-        "/runtime_sjs0.6_2.11-0.1-SNAPSHOT.jar",
-        "/page_sjs0.6_2.11-0.1-SNAPSHOT.jar",
-        "/shared_sjs0.6_2.11-0.1-SNAPSHOT.jar"
-      )
+      name <- allJars.map(f => s"/${new File(f).getName}").filterNot(f => excluded.exists(e => f.contains(e)))
     } yield {
       val stream = getClass.getResourceAsStream(name)
       println("Loading file" + name + ": " + stream)
