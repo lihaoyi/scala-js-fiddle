@@ -5,8 +5,8 @@ import scala.reflect.io.{VirtualDirectory, Streamable}
 import java.util.zip.ZipInputStream
 import java.io._
 
-import org.scalajs.core.tools.classpath.builder.{AbstractJarLibClasspathBuilder, PartialClasspathBuilder, JarTraverser}
 import org.scalajs.core.tools.io._
+
 import scala.collection.immutable.Traversable
 import scala.util.Random
 
@@ -25,10 +25,10 @@ object Classpath {
     println("Loading files...")
     val jarFiles = for {
       name <- Seq(
-        "/scala-library-2.11.5.jar",
-        "/scala-reflect-2.11.5.jar",
-        "/scalajs-library_2.11-0.6.0.jar",
-        "/scalajs-dom_sjs0.6_2.11-0.8.0.jar",
+        "/scala-library-2.11.7.jar",
+        "/scala-reflect-2.11.7.jar",
+        "/scalajs-library_2.11-0.6.7.jar",
+        "/scalajs-dom_sjs0.6_2.11-0.8.2.jar",
         "/scalatags_sjs0.6_2.11-0.4.5.jar",
         "/scalarx_sjs0.6_2.11-0.2.7.jar",
         "/scala-async_2.11-0.9.1.jar",
@@ -91,35 +91,16 @@ object Classpath {
    */
   lazy val scalajs = {
     println("Loading scalaJSClassPath")
-    class Builder extends AbstractJarLibClasspathBuilder{
-      val DummyVersion = "DUMMY_FILE"
-      def listFiles(d: File) = Nil
-      def toJSFile(f: File) = {
-        val file = new MemVirtualJSFile(f._1)
-        file.content = new String(f._2)
-        file
+    val loadedJars: Seq[IRFileCache.IRContainer] = {
+      for ((name, bytes) <- loadedFiles) yield {
+        val jarFile = (new MemVirtualBinaryFile(name) with VirtualJarFile)
+          .withContent(bytes)
+          .withVersion(Some(name)) // unique through the lifetime of the server
+        IRFileCache.IRContainer.Jar(jarFile)
       }
-      def toIRFile(f: File) = {
-        val file = new MemVirtualSerializedScalaJSIRFile(f._1)
-        file.content = f._2
-        file
-      }
-      def isDirectory(f: File) = false
-      type File = (String, Array[Byte])
-      def toInputStream(f: File) = new ByteArrayInputStream(f._2)
-      def isFile(f: File) = true
-      def isJSFile(f: File) = f._1.endsWith(".js")
-      def isJARFile(f: File) = f._1.endsWith(".jar")
-      def exists(f: File) = true
-      def getName(f: File) = f._1
-      def isIRFile(f: File) = f._1.endsWith(".sjsir")
-      def getVersion(f: File) = Random.nextInt().toString
-      def getAbsolutePath(f: File) = f._1
-      def toReader(f: File) = new InputStreamReader(toInputStream(f))
     }
-
-    val res = loadedFiles.map(new Builder().build(_))
-                         .reduceLeft(_ merge _)
+    val cache = (new IRFileCache).newCache
+    val res = cache.cached(loadedJars)
     println("Loaded scalaJSClassPath")
     res
   }

@@ -14,16 +14,16 @@ import scala.reflect.internal.util.{BatchSourceFile, OffsetPosition}
 import scala.tools.nsc.interactive.{InteractiveAnalyzer, Response}
 import scala.tools.nsc
 import scala.io.Source
-import org.scalajs.core.tools.optimizer.{ScalaJSClosureOptimizer, ScalaJSOptimizer}
+
+import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.logging.Level
+import org.scalajs.core.tools.logging._
+import org.scalajs.core.tools.linker.Linker
 
 import scala.tools.nsc.backend.JavaPlatform
 import scala.tools.nsc.util.ClassPath.JavaContext
 import scala.collection.mutable
 import scala.tools.nsc.typechecker.Analyzer
-import org.scalajs.core.tools.classpath.{CompleteClasspath, LinkedClasspath, IRClasspath, PartialClasspath}
-import scala.Some
 
 /**
  * Handles the interaction between scala-js-fiddle and
@@ -163,7 +163,7 @@ object Compiler{
     res
   }
 
-  def compile(src: Array[Byte], logger: String => Unit = _ => ()): Option[PartialClasspath] = {
+  def compile(src: Array[Byte], logger: String => Unit = _ => ()): Option[Seq[VirtualScalaJSIRFile]] = {
 
     val singleFile = makeFile(Shared.prelude.getBytes ++ src)
 
@@ -192,49 +192,34 @@ object Compiler{
         f.content = x.toByteArray
         f: VirtualScalaJSIRFile
       }
-      Some(
-        new org.scalajs.core.tools.classpath.PartialClasspath(
-          Nil,
-          Map.empty,
-          things,
-          None
-        )
-      )
-
+      Some(things.toSeq)
     }
   }
 
-  def export(p: CompleteClasspath) = {
-    p.allCode.map(_.content).mkString("\n\n")
+  def export(output: VirtualJSFile): String =
+    output.content
+
+  def fastOpt(userFiles: Seq[VirtualScalaJSIRFile]): VirtualJSFile =
+    link(userFiles, fullOpt = false)
+
+  def fullOpt(userFiles: Seq[VirtualScalaJSIRFile]): VirtualJSFile =
+    link(userFiles, fullOpt = true)
+
+  def link(userFiles: Seq[VirtualScalaJSIRFile],
+      fullOpt: Boolean): VirtualJSFile = {
+    val semantics =
+      if (fullOpt) Semantics.Defaults.optimized
+      else Semantics.Defaults
+
+    val linker = Linker(
+        semantics = semantics,
+        withSourceMap = false,
+        useClosureCompiler = fullOpt)
+
+    val output = WritableMemVirtualJSFile("output.js")
+    linker.link(Classpath.scalajs ++ userFiles, output, Logger)
+    output
   }
 
-  def fastOpt(userFiles: PartialClasspath): LinkedClasspath = {
-    new ScalaJSOptimizer(semantics).optimizeCP(
-      Classpath.scalajs.merge(userFiles).resolve(),
-      ScalaJSOptimizer.Config(WritableMemVirtualJSFile("output.js")),
-      Logger
-    )
-  }
-
-  def fullOpt(userFiles: PartialClasspath): LinkedClasspath = {
-    val sems = semantics.optimized
-    new ScalaJSClosureOptimizer(sems).optimizeCP(
-      new ScalaJSOptimizer(sems),
-      Classpath.scalajs.merge(userFiles).resolve(),
-      ScalaJSClosureOptimizer.Config(WritableMemVirtualJSFile("output.js")),
-      Logger
-    )
-  }
-
-  object Logger extends org.scalajs.core.tools.logging.Logger {
-    def log(level: Level, message: => String): Unit = println(message)
-    def success(message: => String): Unit = println(message)
-    def trace(t: => Throwable): Unit = t.printStackTrace()
-  }
-
-  object IgnoreLogger extends org.scalajs.core.tools.logging.Logger {
-    def log(level: Level, message: => String): Unit = ()
-    def success(message: => String): Unit = ()
-    def trace(t: => Throwable): Unit = ()
-  }
+  object Logger extends ScalaConsoleLogger
 }

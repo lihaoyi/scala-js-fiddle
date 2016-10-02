@@ -22,17 +22,17 @@ object Build extends sbt.Build{
           (fullOptJS in (client, Compile)).value.data
         )
       },
-      scalaVersion := "2.11.5"
+      scalaVersion := "2.11.7"
     )
   lazy val shared = project.in(file("shared")).enablePlugins(ScalaJSPlugin)
-                           .settings(scalaVersion := "2.11.5")
+                           .settings(scalaVersion := "2.11.7")
 
   lazy val client = project
     .dependsOn(page, shared)
     .enablePlugins(ScalaJSPlugin)
     .settings(
       libraryDependencies ++= Seq(
-        "org.scala-js" %%% "scalajs-dom" % "0.8.0",
+        "org.scala-js" %%% "scalajs-dom" % "0.8.2",
         "com.lihaoyi" %%% "scalatags" % "0.4.5",
         "com.lihaoyi" %%% "scalarx" % "0.2.7",
         "com.lihaoyi" %%% "upickle" % "0.2.6",
@@ -43,17 +43,17 @@ object Build extends sbt.Build{
       relativeSourceMaps := true,
       addCompilerPlugin("com.lihaoyi" %% "acyclic" % "0.1.2"),
       autoCompilerPlugins := true,
-      scalaVersion := "2.11.5"
+      scalaVersion := "2.11.7"
     )
   lazy val page = project
     .dependsOn(shared)
     .enablePlugins(ScalaJSPlugin)
     .settings(
       libraryDependencies ++= Seq(
-        "org.scala-js" %%% "scalajs-dom" % "0.8.0",
+        "org.scala-js" %%% "scalajs-dom" % "0.8.2",
         "com.lihaoyi" %%% "scalatags" % "0.4.5"
       ),
-      scalaVersion := "2.11.5"
+      scalaVersion := "2.11.7"
     )
   lazy val runtime = project
     .dependsOn(page)
@@ -62,14 +62,14 @@ object Build extends sbt.Build{
       resolvers += Resolver.sonatypeRepo("snapshots"),
       libraryDependencies ++= Seq(
         "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-        "org.scala-js" %%% "scalajs-dom" % "0.8.0",
+        "org.scala-js" %%% "scalajs-dom" % "0.8.2",
         "com.lihaoyi" %%% "scalatags" % "0.4.5",
         "org.scala-lang.modules" %% "scala-async" % "0.9.1",
         "com.lihaoyi" %%% "scalarx" % "0.2.7",
         "com.nativelibs4java" %% "scalaxy-loops" % "0.1.1"
       ),
       autoCompilerPlugins := true,
-      scalaVersion := "2.11.5"
+      scalaVersion := "2.11.7"
     )
 
   lazy val server = project
@@ -87,8 +87,8 @@ object Build extends sbt.Build{
         "io.spray" %% "spray-caching" % "1.3.1",
         "io.spray" %% "spray-httpx" % "1.3.1",
         "io.spray" %% "spray-routing" % "1.3.1",
-        "org.scala-js" % s"scalajs-compiler_${scalaVersion.value}" % "0.6.0",
-        "org.scala-js" %% "scalajs-tools" % "0.6.0",
+        "org.scala-js" % s"scalajs-compiler" % "0.6.7" cross CrossVersion.full,
+        "org.scala-js" %% "scalajs-tools" % "0.6.7",
         "org.scala-lang.modules" %% "scala-async" % "0.9.1" % "provided",
         "com.lihaoyi" %% "scalatags" % "0.4.5",
         "com.lihaoyi" %% "acyclic" % "0.1.2" % "provided",
@@ -106,6 +106,6 @@ object Build extends sbt.Build{
       javaOptions in Revolver.reStart += "-Xmx2g",
       addCompilerPlugin("com.lihaoyi" %% "acyclic" % "0.1.2"),
       autoCompilerPlugins := true,
-      scalaVersion := "2.11.5"
+      scalaVersion := "2.11.7"
     )
 }
